@@ -1,0 +1,33 @@
+[
+  {
+    "Name": "Server",
+    "Projects": [
+      {
+        "Path": "Server\\Server.csproj",
+        "Action": "Start"
+      }
+    ]
+  },
+  {
+    "Name": "Client",
+    "Projects": [
+      {
+        "Path": "Client\\Client.csproj",
+        "Action": "Start"
+      }
+    ]
+  },
+  {
+    "Name": "Ceo Projekat",
+    "Projects": [
+      {
+        "Path": "Server\\Server.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Client\\Client.csproj",
+        "Action": "StartWithoutDebugging"
+      }
+    ]
+  }
+]
