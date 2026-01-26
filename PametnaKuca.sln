@@ -1,11 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36623.8 d17.14
+VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{2CC37361-0103-49A7-BE49-A5D23708057A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F210C4DC-8344-475E-BB41-D8A155B00826} = {F210C4DC-8344-475E-BB41-D8A155B00826}
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{64AB537E-5436-4C57-9643-FA17600ED978}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceClient", "Client\DeviceClient.csproj", "{64AB537E-5436-4C57-9643-FA17600ED978}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F210C4DC-8344-475E-BB41-D8A155B00826} = {F210C4DC-8344-475E-BB41-D8A155B00826}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csproj", "{F210C4DC-8344-475E-BB41-D8A155B00826}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +29,10 @@ Global
 		{64AB537E-5436-4C57-9643-FA17600ED978}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{64AB537E-5436-4C57-9643-FA17600ED978}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{64AB537E-5436-4C57-9643-FA17600ED978}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F210C4DC-8344-475E-BB41-D8A155B00826}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F210C4DC-8344-475E-BB41-D8A155B00826}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F210C4DC-8344-475E-BB41-D8A155B00826}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F210C4DC-8344-475E-BB41-D8A155B00826}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,7 +12,7 @@
     "Name": "Client",
     "Projects": [
       {
-        "Path": "Client\\Client.csproj",
+        "Path": "Client\\DeviceClient.csproj",
         "Action": "Start"
       }
     ]
@@ -25,7 +25,7 @@
         "Action": "Start"
       },
       {
-        "Path": "Client\\Client.csproj",
+        "Path": "Client\\DeviceClient.csproj",
         "Action": "StartWithoutDebugging"
       }
     ]

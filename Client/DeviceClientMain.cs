@@ -2,15 +2,16 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace Server
+namespace DeviceClient
 {
-    internal class Program
+    internal class DeviceClientMain
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Server started...");
+            Console.WriteLine("Client started...");
 
-            // Cekanje na input da bi se program zavrsio
+
+
             Console.ReadKey();
         }
     }
