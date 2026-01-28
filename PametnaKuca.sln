@@ -16,6 +16,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csproj", "{F210C4DC-8344-475E-BB41-D8A155B00826}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserClient", "UserClient\UserClient.csproj", "{2CD7693D-97B6-4036-BCB3-4BF8BD2632EC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F210C4DC-8344-475E-BB41-D8A155B00826} = {F210C4DC-8344-475E-BB41-D8A155B00826}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -14,3 +14,6 @@ D:\Projekti\PRMISProjekat\UserClient\obj\Debug\UserClient.csproj.CoreCompileInpu
 D:\Projekti\PRMISProjekat\UserClient\obj\Debug\UserClient.exe
 D:\Projekti\PRMISProjekat\UserClient\obj\Debug\UserClient.pdb
 D:\Projekti\PRMISProjekat\UserClient\obj\Debug\UserClient.exe.config
+D:\Projekti\PRMISProjekat\UserClient\bin\Debug\Domain.dll
+D:\Projekti\PRMISProjekat\UserClient\bin\Debug\Domain.pdb
+D:\Projekti\PRMISProjekat\UserClient\obj\Debug\UserClient.csproj.Up2Date
