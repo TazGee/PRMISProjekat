@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -82,6 +81,7 @@ namespace UserClient
             catch (Exception ex)
             {
                 MessageBox.Show($"Doslo je do greske prilikom povezivanja!\nGreska: {ex.Message}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
         }
 
