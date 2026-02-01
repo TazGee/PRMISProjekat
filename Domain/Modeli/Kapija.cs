@@ -1,15 +1,15 @@
 ﻿using Domain.Interfejsi;
-using System;
 
 namespace Domain.Modeli
 {
     public class Kapija : IDevice
     {
-        public bool Otvorena {  get; set; }
+        public string Name { get; set; }
+        public bool Otvorena { get; set; } = false;
 
-        public Kapija(bool otv)
+        public Kapija(string name)
         {
-            Otvorena = otv;
+            Name = name;
         }
 
         public bool OtvoriKapiju()
@@ -38,9 +38,10 @@ namespace Domain.Modeli
             }
         }
 
-        public void PrintProperties()
+        public string GetProperties()
         {
-            Console.WriteLine("Test kapija");
+            if(Otvorena)    return $"[Kapija]: {Name} | Otvorena";
+            else            return $"[Kapija]: {Name} | Zatvorena";
         }
     }
 }

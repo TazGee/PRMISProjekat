@@ -2,6 +2,6 @@
 {
     public interface IDevice
     {
-        void PrintProperties();
+        string GetProperties();
     }
 }

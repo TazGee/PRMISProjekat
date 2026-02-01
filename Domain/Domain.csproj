@@ -41,6 +41,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enumeratori\NijanseSvetla.cs" />
+    <Compile Include="Enumeratori\RezimiKlime.cs" />
     <Compile Include="Interfejsi\IDevice.cs" />
     <Compile Include="Modeli\Kapija.cs" />
     <Compile Include="Modeli\Klima.cs" />

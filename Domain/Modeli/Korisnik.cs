@@ -2,12 +2,12 @@
 {
     public class Korisnik
     {
-        long Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Nickname { get; set; }
         public string Password { get; set; }
         public bool Login {  get; set; }
+        public int UDPPort { get; set; } = 0;
 
         public Korisnik () { Nickname = "Unknown"; Password = "Unknown"; Login = false; }
 
@@ -17,9 +17,8 @@
             Password = pw;
             Login = login;
         }
-        public Korisnik(long id, string firstName, string lastName, string nickname, string password, bool login)
+        public Korisnik(string firstName, string lastName, string nickname, string password, bool login)
         {
-            Id = id;
             FirstName = firstName;
             LastName = lastName;
             Nickname = nickname;

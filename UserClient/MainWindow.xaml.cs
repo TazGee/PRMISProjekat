@@ -46,43 +46,44 @@ namespace UserClient
                 return;
             }
 
+            // -- Definisanje tcp socketa i endpointa i povezivanje
+            tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            tcpServerEP = new IPEndPoint(ipAddress, port);
+
             // -- Povezivanje
             try
             {
-                // -- Definisanje tcp socketa i endpointa i povezivanje
-                tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                tcpServerEP = new IPEndPoint(ipAddress, port);
                 tcpSocket.Connect(tcpServerEP);
-
-                // -- Dobijanje UDP porta od servera i cuvanje u buffer
-                byte[] buffer = new byte[4];
-                int bytesReceived = tcpSocket.Receive(buffer);
-                if(bytesReceived != 4)
-                {
-                    MessageBox.Show("Server nije poslao ispravan port!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                // -- Konvertovanje porta u int
-                udpPort = BitConverter.ToInt32(buffer, 0);
-
-                // -- Povezivanje na server preko UDP protokola
-                udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                udpServerEP = new IPEndPoint(ipAddress, udpPort);
-                udpSocket.Connect(udpServerEP);
-                
-                MessageBox.Show($"Povezivanje uspesno!\nIP: {ipAddress.ToString()}, Port: {udpPort}", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                ConnectionGrid.Visibility = Visibility.Collapsed;
-                AuthGrid.Visibility = Visibility.Visible;
-
-                ShowLogin(sender, e);
             }
-            catch (Exception ex)
+            catch (SocketException ex)
             {
-                MessageBox.Show($"Doslo je do greske prilikom povezivanja!\nGreska: {ex.Message}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Doslo je do greske prilikom povezivanja!\nGreska: {ex.SocketErrorCode}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+
+            // -- Dobijanje UDP porta od servera i cuvanje u buffer
+            byte[] buffer = new byte[4];
+            int bytesReceived = tcpSocket.Receive(buffer);
+            if (bytesReceived != 4)
+            {
+                MessageBox.Show("Server nije poslao ispravan port!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // -- Konvertovanje porta u int
+            udpPort = BitConverter.ToInt32(buffer, 0);
+
+            // -- Povezivanje na server preko UDP protokola
+            udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            udpServerEP = new IPEndPoint(ipAddress, udpPort);
+            udpSocket.Connect(udpServerEP);
+
+            MessageBox.Show($"Povezivanje uspesno!\nIP: {ipAddress.ToString()}, Port: {udpPort}", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            ConnectionGrid.Visibility = Visibility.Collapsed;
+            AuthGrid.Visibility = Visibility.Visible;
+
+            ShowLogin(sender, e);
         }
 
         void ShowRegister(object sender, RoutedEventArgs e)

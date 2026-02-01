@@ -1,8 +1,10 @@
 ﻿using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace DeviceClient
 {
@@ -23,9 +25,25 @@ namespace DeviceClient
             }
             while (unos < 1 || unos > 3) ;
 
-            if (unos == 1) { uredjaj = new Kapija(false); }
-            else if (unos == 2) { uredjaj = new Klima(); }
-            else if (unos == 3) { uredjaj = new Svetla(); }
+            string naziv;
+            if (unos == 1) 
+            {
+                Console.Write("Unesite naziv kapije: ");
+                naziv = Console.ReadLine();
+                uredjaj = new Kapija(naziv); 
+            }
+            else if (unos == 2) 
+            {
+                Console.Write("Unesite naziv klime: ");
+                naziv = Console.ReadLine();
+                uredjaj = new Klima(naziv); 
+            }
+            else if (unos == 3) 
+            {
+                Console.Write("Unesite naziv svetala: ");
+                naziv = Console.ReadLine();
+                uredjaj = new Svetla(naziv); 
+            }
             else { Console.WriteLine("Neuspesno dodeljivanje tipa, probajte opet..."); Console.ReadKey(); }
 
             Console.Clear();
@@ -48,7 +66,6 @@ namespace DeviceClient
 
             Socket udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint udpServerEP = new IPEndPoint(ipAddress, port);
-            udpSocket.Connect(udpServerEP);
 
 
 
