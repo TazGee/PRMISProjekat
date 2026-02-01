@@ -1,10 +1,12 @@
 ﻿using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 
 namespace DeviceClient
 {
@@ -44,7 +46,7 @@ namespace DeviceClient
                 naziv = Console.ReadLine();
                 uredjaj = new Svetla(naziv); 
             }
-            else { Console.WriteLine("Neuspesno dodeljivanje tipa, probajte opet..."); Console.ReadKey(); }
+            else { Console.WriteLine("Neuspesno dodeljivanje tipa, probajte opet..."); Console.ReadKey(); return; }
 
             Console.Clear();
             Console.WriteLine("Uspesno ste izabrali tip uredjaja!");
@@ -67,7 +69,14 @@ namespace DeviceClient
             Socket udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint udpServerEP = new IPEndPoint(ipAddress, port);
 
-
+            byte[] buffer = new byte[1024];
+            using (MemoryStream ms = new MemoryStream())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Serialize(ms, uredjaj);
+                buffer = ms.ToArray();
+                udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+            }
 
             udpSocket.Close();
             Console.ReadKey();

@@ -1,5 +1,8 @@
-﻿namespace Domain.Modeli
+﻿using System;
+
+namespace Domain.Modeli
 {
+    [Serializable]
     public class Korisnik
     {
         public string FirstName { get; set; }
@@ -8,7 +11,7 @@
         public string Password { get; set; }
         public bool Login {  get; set; }
         public int UDPPort { get; set; } = 0;
-
+        public bool Prijavljen { get; set; } = false;
         public Korisnik () { Nickname = "Unknown"; Password = "Unknown"; Login = false; }
 
         public Korisnik(string nick, string pw, bool login)

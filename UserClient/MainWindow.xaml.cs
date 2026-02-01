@@ -72,13 +72,11 @@ namespace UserClient
 
             // -- Konvertovanje porta u int
             udpPort = BitConverter.ToInt32(buffer, 0);
+            MessageBox.Show($"Server je prosledio port! Port: {udpPort}", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
 
             // -- Povezivanje na server preko UDP protokola
             udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             udpServerEP = new IPEndPoint(ipAddress, udpPort);
-            udpSocket.Connect(udpServerEP);
-
-            MessageBox.Show($"Povezivanje uspesno!\nIP: {ipAddress.ToString()}, Port: {udpPort}", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
 
             ConnectionGrid.Visibility = Visibility.Collapsed;
             AuthGrid.Visibility = Visibility.Visible;

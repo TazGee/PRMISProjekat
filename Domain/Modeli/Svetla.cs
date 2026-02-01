@@ -1,10 +1,13 @@
 ﻿using Domain.Enumeratori;
 using Domain.Interfejsi;
+using System;
 
 namespace Domain.Modeli
 {
+    [Serializable]
     public class Svetla : IDevice
     {
+        public long Id { get; set; }
         public string Name { get; set; }
         public int ProcenatOsvetljenja { get; set; } = 100;
         public NijanseSvetla NijansaSvetla { get; set; } = NijanseSvetla.Bela;
@@ -12,6 +15,7 @@ namespace Domain.Modeli
         
         public Svetla(string name)
         {
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Name = name;
         }
 

@@ -27,6 +27,19 @@
       {
         "Path": "Client\\DeviceClient.csproj",
         "Action": "StartWithoutDebugging"
+      },
+      {
+        "Path": "UserClient\\UserClient.csproj",
+        "Action": "StartWithoutDebugging"
+      }
+    ]
+  },
+  {
+    "Name": "UserClient",
+    "Projects": [
+      {
+        "Path": "UserClient\\UserClient.csproj",
+        "Action": "Start"
       }
     ]
   }

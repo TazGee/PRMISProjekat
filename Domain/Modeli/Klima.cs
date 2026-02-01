@@ -1,10 +1,13 @@
 ﻿using Domain.Enumeratori;
 using Domain.Interfejsi;
+using System;
 
 namespace Domain.Modeli
 {
+    [Serializable]
     public class Klima : IDevice
     {
+        public long Id { get; set; }
         public string Name { get; set; }
         public int Temperatura { get; set; } = 20;
         public RezimiKlime RezimRada { get; set; } = RezimiKlime.Grejanje;
@@ -12,6 +15,7 @@ namespace Domain.Modeli
 
         public Klima(string name)
         {
+            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Name = name;
         }
 
