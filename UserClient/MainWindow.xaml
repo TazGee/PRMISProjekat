@@ -9,7 +9,7 @@
         Background="#9C0F68"
         BorderBrush="#AD5877">
     <Grid>
-        <Grid x:Name="ConnectionGrid">
+        <Grid x:Name="ConnectionGrid" Visibility="Visible">
             <TextBlock Foreground="#FFFFFF" Text="POVEZIVANJE NA SERVER" FontSize="44" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,10,0,30"/>
             <Grid x:Name="ServerPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="250" Visibility="Visible">
                 <StackPanel>
@@ -36,7 +36,7 @@
             </StackPanel>
         </Grid>
         <StackPanel x:Name="LoginButtons" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0, 0, 0, 30">
-            <Button Content="Prijavi se" FontSize="18" Height="40" Background="#AD5877" Foreground="#FFFFFF" Width="180" Margin="0,10,0,10"/>
+            <Button Content="Prijavi se" FontSize="18" Height="40" Background="#AD5877" Foreground="#FFFFFF" Width="180" Margin="0,10,0,10" Click="Prijava"/>
             <Button Content="Registruj se" Height="25" FontSize="12" Background="#AD5877" Foreground="#FFFFFF" Width="100" Click="ShowRegister"/>
         </StackPanel>
 
@@ -51,7 +51,7 @@
             </StackPanel>
         </Grid>
         <StackPanel x:Name="RegisterButtons" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0, 0, 0, 30" Visibility="Collapsed">
-            <Button Content="Registruj se" FontSize="18" Background="#294C60" Foreground="#FFFFFF" Height="40" Width="180" Margin="0,10,0,10"/>
+            <Button Content="Registruj se" FontSize="18" Background="#294C60" Foreground="#FFFFFF" Height="40" Width="180" Margin="0,10,0,10" Click="Registracija"/>
             <Button Content="Prijavi se" Height="25" Background="#294C60" Foreground="#FFFFFF" FontSize="12" Width="100" Click="ShowLogin"/>
         </StackPanel>
         </Grid>

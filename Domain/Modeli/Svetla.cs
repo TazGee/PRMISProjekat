@@ -21,6 +21,11 @@ namespace Domain.Modeli
 
         public Svetla() { }
 
+        public long GetID()
+        {
+            return Id;
+        }
+
         public string GetProperties()
         {
             if(Upaljena) return $"[Svetla]: {Name} | Upaljena | {ProcenatOsvetljenja}% | {NijansaSvetla.ToString()}";

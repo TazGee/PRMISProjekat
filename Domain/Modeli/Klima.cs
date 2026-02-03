@@ -21,6 +21,11 @@ namespace Domain.Modeli
 
         public Klima() { }
 
+        public long GetID()
+        {
+            return Id;
+        }
+
         public string GetProperties()
         {
             if(Upaljena) return $"[Klima]: {Name} | Upaljena | {RezimRada.ToString()} | {Temperatura}˘C";

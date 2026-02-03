@@ -3,5 +3,6 @@
     public interface IDevice
     {
         string GetProperties();
+        long GetID();
     }
 }

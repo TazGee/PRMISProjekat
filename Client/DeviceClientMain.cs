@@ -14,6 +14,7 @@ namespace DeviceClient
     {
         static void Main(string[] args)
         {
+            Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine("Client started...");
 
             IDevice uredjaj;
@@ -77,6 +78,8 @@ namespace DeviceClient
                 buffer = ms.ToArray();
                 udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
             }
+
+            // TODO: Odraditi while
 
             udpSocket.Close();
             Console.ReadKey();

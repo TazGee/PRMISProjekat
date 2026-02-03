@@ -16,6 +16,11 @@ namespace Domain.Modeli
             Name = name;
         }
 
+        public long GetID()
+        {
+            return Id;
+        }
+
         public string GetProperties()
         {
             if(Otvorena)    return $"[Kapija]: {Name} | Otvorena";
