@@ -7,6 +7,7 @@ namespace Domain.Modeli
     [Serializable]
     public class Svetla : IDevice
     {
+        public TipUredjaja DeviceType => TipUredjaja.Svetla;
         public long Id { get; set; }
         public string Name { get; set; }
         public int ProcenatOsvetljenja { get; set; } = 100;

@@ -1,7 +1,6 @@
 ﻿using Domain.Modeli;
 using System;
 using System.IO;
-using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -121,6 +120,16 @@ namespace UserClient
                     {
                         MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
+                    else if(text == "regUspesno")
+                    {
+                        Dispatcher.Invoke(() => { AuthGrid.Visibility = Visibility.Collapsed; });
+                        user.Prijavljen = true;
+                        MessageBox.Show("Registracija uspesna!", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else if(text == "regNeuspesno")
+                    {
+                        MessageBox.Show("Neuspesan pokusaj registracije!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
                 catch
                 {
@@ -175,7 +184,27 @@ namespace UserClient
 
         void Registracija(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                string imeprezime = RegisterFirstLastName.Text;
+                string nick = RegisterNickname.Text;
+                string pw = RegisterPassword.Password;
 
+                user = new Korisnik(imeprezime, nick, pw, false);
+
+                byte[] buffer = new byte[1024];
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    BinaryFormatter bf = new BinaryFormatter();
+                    bf.Serialize(ms, user);
+                    buffer = ms.ToArray();
+                    udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Nije moguce registrovati se!\nGreska: {ex.Message}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         void ShowRegister(object sender, RoutedEventArgs e)

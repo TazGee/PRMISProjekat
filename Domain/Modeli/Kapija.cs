@@ -1,4 +1,5 @@
-﻿using Domain.Interfejsi;
+﻿using Domain.Enumeratori;
+using Domain.Interfejsi;
 using System;
 
 namespace Domain.Modeli
@@ -6,6 +7,7 @@ namespace Domain.Modeli
     [Serializable]
     public class Kapija : IDevice
     {
+        public TipUredjaja DeviceType => TipUredjaja.Kapija;
         public long Id { get; set; }
         public string Name { get; set; }
         public bool Otvorena { get; set; } = false;

@@ -1,12 +1,10 @@
 ﻿using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
 
 namespace DeviceClient
 {
@@ -16,6 +14,8 @@ namespace DeviceClient
         {
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine("Client started...");
+
+            EndPoint posiljaocEP = new IPEndPoint(IPAddress.Any, 0);
 
             IDevice uredjaj;
             int unos = 0;
@@ -79,7 +79,31 @@ namespace DeviceClient
                 udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
             }
 
-            // TODO: Odraditi while
+            while(true)
+            {
+                int received = udpSocket.ReceiveFrom(buffer, ref posiljaocEP);
+
+                byte[] data = new byte[received];
+                Array.Copy(buffer, data, received);
+
+                IDevice serverUredjaj;
+                using (MemoryStream ms = new MemoryStream(data))
+                {
+                    BinaryFormatter bf = new BinaryFormatter();
+                    serverUredjaj = (IDevice)bf.Deserialize(ms);
+                }
+
+                uredjaj = serverUredjaj;
+
+                if(uredjaj is Kapija)
+                    Console.WriteLine($"Server je izmenio {((Kapija)uredjaj).Name} | Otvorena: {((Kapija)uredjaj).Otvorena.ToString()}");
+                else if(uredjaj is Klima)
+                    Console.WriteLine($"Server je izmenio {((Klima)uredjaj).Name} | Upaljena: {((Klima)uredjaj).Upaljena.ToString()} | {((Klima)uredjaj).RezimRada.ToString()} | {((Klima)uredjaj).Temperatura}C");
+                else
+                    Console.WriteLine($"Server je izmenio {((Svetla)uredjaj).Name} | Upaljena: {((Svetla)uredjaj).Upaljena.ToString()} | {((Svetla)uredjaj).NijansaSvetla.ToString()} | {((Svetla)uredjaj).ProcenatOsvetljenja}% osvetljenja");
+            
+                // 
+            }
 
             udpSocket.Close();
             Console.ReadKey();

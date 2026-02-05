@@ -7,6 +7,7 @@ namespace Domain.Modeli
     [Serializable]
     public class Klima : IDevice
     {
+        public TipUredjaja DeviceType => TipUredjaja.Klima;
         public long Id { get; set; }
         public string Name { get; set; }
         public int Temperatura { get; set; } = 20;

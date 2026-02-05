@@ -89,7 +89,6 @@ namespace Server
                         {
                             if(u.GetID() == uredjaj.GetID())
                             {
-                                // TODO: Uredjaj komunicira
                                 pronasao = true;
 
                                 
@@ -142,13 +141,37 @@ namespace Server
                                 poruka = "neuspesno";
                             }
 
-                            Console.WriteLine($"Status prijave korisnika: {poruka}");
+                            Console.WriteLine($"Status prijave korisnika: {poruka} | {korisnik.Nickname}");
                             byte[] binarnaPoruka = Encoding.UTF8.GetBytes(poruka);
                             int brBajta = s.SendTo(binarnaPoruka, 0, binarnaPoruka.Length, SocketFlags.None, posiljaocEP);
                         }
                         else
                         {
-                            // TODO: Registracija
+                            bool pronasao = false;
+                            foreach (Korisnik k in listaKorisnika)
+                            {
+                                if (k.Nickname == korisnik.Nickname)
+                                {
+                                    pronasao = true;
+                                    break;
+                                }
+                            }
+
+                            string poruka;
+                            if (pronasao)
+                            {
+                                poruka = "regNeuspesno";
+                            }
+                            else
+                            {
+                                poruka = "regUspesno";
+                                listaKorisnika.Add(korisnik);
+                                korisnik.Prijavljen = true;
+                            }
+
+                            Console.WriteLine($"Status registracije korisnika: {poruka} | {korisnik.Nickname}");
+                            byte[] binarnaPoruka = Encoding.UTF8.GetBytes(poruka);
+                            int brBajta = s.SendTo(binarnaPoruka, 0, binarnaPoruka.Length, SocketFlags.None, posiljaocEP);
                         }
                     }
                 }
