@@ -1,4 +1,5 @@
-﻿using Domain.Interfejsi;
+﻿using Domain.Enumeratori;
+using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
 using System.IO;
@@ -70,16 +71,19 @@ namespace DeviceClient
             Socket udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint udpServerEP = new IPEndPoint(ipAddress, port);
 
-            byte[] buffer = new byte[1024];
+            byte[] buffer;
+
             using (MemoryStream ms = new MemoryStream())
             {
+                BinaryWriter bw = new BinaryWriter(ms);
                 BinaryFormatter bf = new BinaryFormatter();
+                bw.Write((byte)uredjaj.DeviceType);
                 bf.Serialize(ms, uredjaj);
                 buffer = ms.ToArray();
-                udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+                udpSocket.SendTo(buffer, udpServerEP);
             }
 
-            while(true)
+            while (true)
             {
                 int received = udpSocket.ReceiveFrom(buffer, ref posiljaocEP);
 
@@ -87,10 +91,17 @@ namespace DeviceClient
                 Array.Copy(buffer, data, received);
 
                 IDevice serverUredjaj;
+
                 using (MemoryStream ms = new MemoryStream(data))
                 {
                     BinaryFormatter bf = new BinaryFormatter();
-                    serverUredjaj = (IDevice)bf.Deserialize(ms);
+                    BinaryReader br = new BinaryReader(ms);
+                    TipUredjaja tipUredjaja = (TipUredjaja)br.ReadByte();
+
+                    if (tipUredjaja == TipUredjaja.Kapija) serverUredjaj = (Kapija)bf.Deserialize(ms);
+                    else if (tipUredjaja == TipUredjaja.Kapija) serverUredjaj = (Klima)bf.Deserialize(ms);
+                    else if (tipUredjaja == TipUredjaja.Svetla) serverUredjaj = (Svetla)bf.Deserialize(ms);
+                    else throw new Exception("Poslat nepoznat tip uredjaja od strane servera!");
                 }
 
                 uredjaj = serverUredjaj;
@@ -104,9 +115,6 @@ namespace DeviceClient
             
                 // 
             }
-
-            udpSocket.Close();
-            Console.ReadKey();
         }
     }
 }

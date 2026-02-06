@@ -1,4 +1,5 @@
-﻿using Domain.Modeli;
+﻿using Domain.Enumeratori;
+using Domain.Modeli;
 using System;
 using System.IO;
 using System.Net;
@@ -116,20 +117,15 @@ namespace UserClient
                         user.Prijavljen = true;
                         MessageBox.Show("Prijava uspesna!", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
-                    else if(text == "neuspesno")
-                    {
-                        MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                    else if(text == "neuspesno") MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+
                     else if(text == "regUspesno")
                     {
                         Dispatcher.Invoke(() => { AuthGrid.Visibility = Visibility.Collapsed; });
                         user.Prijavljen = true;
                         MessageBox.Show("Registracija uspesna!", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
-                    else if(text == "regNeuspesno")
-                    {
-                        MessageBox.Show("Neuspesan pokusaj registracije!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                    else if(text == "regNeuspesno") MessageBox.Show("Neuspesan pokusaj registracije!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 catch
                 {
@@ -167,10 +163,12 @@ namespace UserClient
 
                 user = new Korisnik(nick, pw, true);
 
-                byte[] buffer = new byte[1024];
+                byte[] buffer;
                 using (MemoryStream ms = new MemoryStream())
                 {
                     BinaryFormatter bf = new BinaryFormatter();
+                    BinaryWriter bw = new BinaryWriter(ms);
+                    bw.Write((byte)TipUdpPoruke.Korisnik);
                     bf.Serialize(ms, user);
                     buffer = ms.ToArray();
                     udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
@@ -192,10 +190,12 @@ namespace UserClient
 
                 user = new Korisnik(imeprezime, nick, pw, false);
 
-                byte[] buffer = new byte[1024];
+                byte[] buffer;
                 using (MemoryStream ms = new MemoryStream())
                 {
                     BinaryFormatter bf = new BinaryFormatter();
+                    BinaryWriter bw = new BinaryWriter(ms);
+                    bw.Write((byte)TipUdpPoruke.Korisnik);
                     bf.Serialize(ms, user);
                     buffer = ms.ToArray();
                     udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);

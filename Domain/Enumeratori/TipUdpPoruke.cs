@@ -1,8 +1,8 @@
 ﻿namespace Domain.Enumeratori
 {
-    public enum TipUdpPoruke
+    public enum TipUdpPoruke : byte
     {
-        Text,
-        Objekat
+        Korisnik,
+        Uredjaj
     }
 }

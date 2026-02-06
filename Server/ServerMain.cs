@@ -1,4 +1,5 @@
-﻿using Domain.Interfejsi;
+﻿using Domain.Enumeratori;
+using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
 using System.Collections.Generic;
@@ -14,6 +15,9 @@ namespace Server
     {
         static void Main(string[] args)
         {
+            int devicePort = 5000;
+            int tcpHandshakePort = 4000;
+
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine("Server started...");
 
@@ -30,8 +34,8 @@ namespace Server
 
             Dictionary<IPEndPoint, IDevice> uredjaji = new Dictionary<IPEndPoint, IDevice>();
 
-            udpSocket.Bind(new IPEndPoint(IPAddress.Any, 5000));
-            tcpSocket.Bind(new IPEndPoint(IPAddress.Any, 4000));
+            udpSocket.Bind(new IPEndPoint(IPAddress.Any, devicePort));
+            tcpSocket.Bind(new IPEndPoint(IPAddress.Any, tcpHandshakePort));
 
             udpSocket.Blocking = false;
 
@@ -78,10 +82,18 @@ namespace Server
                         Array.Copy(buffer, data, received);
 
                         IDevice uredjaj;
+
                         using (MemoryStream ms = new MemoryStream(data))
                         {
+                            BinaryReader br = new BinaryReader(ms);
                             BinaryFormatter bf = new BinaryFormatter();
-                            uredjaj = (IDevice)bf.Deserialize(ms);
+
+                            TipUredjaja type = (TipUredjaja)br.ReadByte();
+
+                            if (type == TipUredjaja.Kapija) uredjaj = (Kapija)bf.Deserialize(ms);
+                            else if (type == TipUredjaja.Klima) uredjaj = (Klima)bf.Deserialize(ms);
+                            else if (type == TipUredjaja.Svetla) uredjaj = (Svetla)bf.Deserialize(ms);
+                            else throw new Exception("Nepoznat tip uređaja");
                         }
 
                         bool pronasao = false;
@@ -111,73 +123,82 @@ namespace Server
                         byte[] data = new byte[received];
                         Array.Copy(buffer, data, received);
 
-                        Korisnik korisnik;
                         using (MemoryStream ms = new MemoryStream(data))
                         {
                             BinaryFormatter bf = new BinaryFormatter();
-                            korisnik = (Korisnik)bf.Deserialize(ms);
-                        }
+                            BinaryReader br = new BinaryReader(ms);
 
-                        if(korisnik.Login)
-                        {
-                            bool pronasao = false;
-                            foreach(Korisnik k in listaKorisnika)
-                            {
-                                if(k.Nickname == korisnik.Nickname && k.Password == korisnik.Password && !k.Prijavljen)
-                                {
-                                    pronasao = true;
-                                    k.Prijavljen = true;
-                                    break;
-                                }
-                            }
+                            TipUdpPoruke tipPoruke = (TipUdpPoruke)br.ReadByte();
 
-                            string poruka;
-                            if (pronasao)
+                            if(tipPoruke == TipUdpPoruke.Korisnik)
                             {
-                                poruka = "uspesno";
+                                Korisnik korisnik = (Korisnik)bf.Deserialize(ms);
+                                byte[] binarnaPoruka = Encoding.UTF8.GetBytes(ObradiKorisnika(korisnik, listaKorisnika));
+                                int brBajta = s.SendTo(binarnaPoruka, 0, binarnaPoruka.Length, SocketFlags.None, posiljaocEP);
                             }
                             else
                             {
-                                poruka = "neuspesno";
-                            }
 
-                            Console.WriteLine($"Status prijave korisnika: {poruka} | {korisnik.Nickname}");
-                            byte[] binarnaPoruka = Encoding.UTF8.GetBytes(poruka);
-                            int brBajta = s.SendTo(binarnaPoruka, 0, binarnaPoruka.Length, SocketFlags.None, posiljaocEP);
-                        }
-                        else
-                        {
-                            bool pronasao = false;
-                            foreach (Korisnik k in listaKorisnika)
-                            {
-                                if (k.Nickname == korisnik.Nickname)
-                                {
-                                    pronasao = true;
-                                    break;
-                                }
                             }
-
-                            string poruka;
-                            if (pronasao)
-                            {
-                                poruka = "regNeuspesno";
-                            }
-                            else
-                            {
-                                poruka = "regUspesno";
-                                listaKorisnika.Add(korisnik);
-                                korisnik.Prijavljen = true;
-                            }
-
-                            Console.WriteLine($"Status registracije korisnika: {poruka} | {korisnik.Nickname}");
-                            byte[] binarnaPoruka = Encoding.UTF8.GetBytes(poruka);
-                            int brBajta = s.SendTo(binarnaPoruka, 0, binarnaPoruka.Length, SocketFlags.None, posiljaocEP);
                         }
                     }
                 }
                 if(sc != null)
                 {
                     korisnickiSocketi.Add(sc);
+                }
+            }
+        }
+
+        static string ObradiKorisnika(Korisnik korisnik, List<Korisnik> listaKorisnika)
+        {
+            if (korisnik.Login)
+            {
+                bool pronasao = false;
+                foreach (Korisnik k in listaKorisnika)
+                {
+                    if (k.Nickname == korisnik.Nickname && k.Password == korisnik.Password && !k.Prijavljen)
+                    {
+                        pronasao = true;
+                        k.Prijavljen = true;
+                        break;
+                    }
+                }
+
+                if (pronasao)
+                {
+                    Console.WriteLine($"Status prijave korisnika: uspesno | {korisnik.Nickname}");
+                    return "uspesno";
+                }
+                else
+                {
+                    Console.WriteLine($"Status prijave korisnika: neuspesno | {korisnik.Nickname}");
+                    return "neuspesno";
+                }
+            }
+            else
+            {
+                bool pronasao = false;
+                foreach (Korisnik k in listaKorisnika)
+                {
+                    if (k.Nickname == korisnik.Nickname)
+                    {
+                        pronasao = true;
+                        break;
+                    }
+                }
+
+                if (pronasao)
+                {
+                    Console.WriteLine($"Status registracije korisnika: regNeuspesno | {korisnik.Nickname}");
+                    return "regNeuspesno";
+                }
+                else
+                {
+                    Console.WriteLine($"Status registracije korisnika: regUspesno | {korisnik.Nickname}");
+                    listaKorisnika.Add(korisnik);
+                    korisnik.Prijavljen = true;
+                    return "regUspesno";
                 }
             }
         }

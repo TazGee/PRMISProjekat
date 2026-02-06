@@ -1,6 +1,6 @@
 ﻿namespace Domain.Enumeratori
 {
-    public enum TipUredjaja
+    public enum TipUredjaja : byte
     {
         Kapija,
         Klima,
