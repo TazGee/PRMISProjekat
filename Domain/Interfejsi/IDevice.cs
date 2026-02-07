@@ -4,7 +4,7 @@ namespace Domain.Interfejsi
 {
     public interface IDevice
     {
-        TipUredjaja DeviceType { get; }
+        TipPodatka DeviceType { get; }
         string GetProperties();
         long GetID();
     }

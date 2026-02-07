@@ -1,4 +1,5 @@
 ﻿using Domain.Enumeratori;
+using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
 using System.IO;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Collections.Generic;
 
 namespace UserClient
 {
@@ -29,6 +31,9 @@ namespace UserClient
         Korisnik user;
 
         int udpPort;
+
+        List<IDevice> listaUredjaja = new List<IDevice>();
+        IDevice selectedDevice = null;
 
         public MainWindow()
         {
@@ -53,7 +58,7 @@ namespace UserClient
                 return;
             }
 
-            // -- Definisanje tcp socketa i endpointa i povezivanje
+            // -- Definisanje tcp socketa i endpointa
             tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             tcpServerEP = new IPEndPoint(ipAddress, port);
 
@@ -61,44 +66,27 @@ namespace UserClient
             try
             {
                 tcpSocket.Connect(tcpServerEP);
+
+                // -- Prikazivanje grida za prijavu
+                ConnectionGrid.Visibility = Visibility.Collapsed;
+                AuthGrid.Visibility = Visibility.Visible;
+
+                cts = new CancellationTokenSource();
+                task = Task.Run(() => ReceiveLoop(cts.Token));
+
+                ShowLogin(sender, e);
             }
             catch (SocketException ex)
             {
                 MessageBox.Show($"Doslo je do greske prilikom povezivanja!\nGreska: {ex.SocketErrorCode}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-
-            // -- Dobijanje UDP porta od servera i cuvanje u buffer
-            byte[] buffer = new byte[4];
-            int bytesReceived = tcpSocket.Receive(buffer);
-            if (bytesReceived != 4)
-            {
-                MessageBox.Show("Server nije poslao ispravan port!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            // -- Konvertovanje porta u int
-            udpPort = BitConverter.ToInt32(buffer, 0);
-            MessageBox.Show($"Server je prosledio port! Port: {udpPort}", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
-
-            // -- Povezivanje na server preko UDP protokola
-            udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            udpSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
-            udpServerEP = new IPEndPoint(ipAddress, udpPort);
-
-            // -- Prikazivanje grida za prijavu
-            ConnectionGrid.Visibility = Visibility.Collapsed;
-            AuthGrid.Visibility = Visibility.Visible;
-
-            cts = new CancellationTokenSource();
-            task = Task.Run(() => ReceiveLoop(cts.Token));
-
-            ShowLogin(sender, e);
         }
 
         private void ReceiveLoop(CancellationToken token)
         {
             byte[] buf = new byte[4096];
+            EndPoint posiljaocEP = new IPEndPoint(IPAddress.Any, 0);
 
             while (!token.IsCancellationRequested)
             {
@@ -107,25 +95,26 @@ namespace UserClient
 
                 try
                 {
-                    EndPoint ep = new IPEndPoint(IPAddress.Any, 0);
-                    int n = s.ReceiveFrom(buf, ref ep);
-                    string text = Encoding.UTF8.GetString(buf, 0, n);
+                    int received = udpSocket.ReceiveFrom(buf, ref posiljaocEP);
 
-                    if (text == "uspesno")
-                    {
-                        Dispatcher.Invoke(() => {AuthGrid.Visibility = Visibility.Collapsed;});
-                        user.Prijavljen = true;
-                        MessageBox.Show("Prijava uspesna!", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                    else if(text == "neuspesno") MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                    byte[] data = new byte[received];
+                    Array.Copy(buf, data, received);
 
-                    else if(text == "regUspesno")
+                    Komanda komanda = new Komanda();
+
+                    using (MemoryStream ms = new MemoryStream(data))
                     {
-                        Dispatcher.Invoke(() => { AuthGrid.Visibility = Visibility.Collapsed; });
-                        user.Prijavljen = true;
-                        MessageBox.Show("Registracija uspesna!", "Uspesno", MessageBoxButton.OK, MessageBoxImage.Information);
+                        BinaryReader br = new BinaryReader(ms);
+                        BinaryFormatter bf = new BinaryFormatter();
+                        TipPodatka type = (TipPodatka)br.ReadByte();
+
+                        if (type == TipPodatka.Komanda)  komanda = (Komanda)bf.Deserialize(ms);
+                        else if(type == TipPodatka.ListaUredjaja)
+                        {
+                            // TO DO
+                        }
+                        else throw new Exception("Server je poslao nepoznat tip podatka!");
                     }
-                    else if(text == "regNeuspesno") MessageBox.Show("Neuspesan pokusaj registracije!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 catch
                 {
@@ -156,28 +145,51 @@ namespace UserClient
 
         void Prijava(object sender, RoutedEventArgs e)
         {
-            try
+            string nick = LoginNickname.Text;
+            string pw = LoginPassword.Password;
+
+            user = new Korisnik(nick, pw, true);
+
+            byte[] buffer;
+            using (MemoryStream ms = new MemoryStream())
             {
-                string nick = LoginNickname.Text;
-                string pw = LoginPassword.Password;
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Serialize(ms, user);
+                buffer = ms.ToArray();
+            }
 
-                user = new Korisnik(nick, pw, true);
+            tcpSocket.Send(buffer);
 
-                byte[] buffer;
-                using (MemoryStream ms = new MemoryStream())
+            byte[] odgovor = new byte[16];
+            int received = tcpSocket.Receive(odgovor);
+
+            using (MemoryStream ms = new MemoryStream(odgovor, 0, received))
+            {
+                BinaryReader br = new BinaryReader(ms);
+                bool ok = br.ReadBoolean();
+
+                if (!ok)
                 {
-                    BinaryFormatter bf = new BinaryFormatter();
-                    BinaryWriter bw = new BinaryWriter(ms);
-                    bw.Write((byte)TipUdpPoruke.Korisnik);
-                    bf.Serialize(ms, user);
-                    buffer = ms.ToArray();
-                    udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+                    MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
+
+                udpPort = br.ReadInt32();
             }
-            catch (Exception ex)
+
+            udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            udpSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
+            udpServerEP = new IPEndPoint(tcpServerEP.Address, udpPort);
+
+            cts = new CancellationTokenSource();
+            task = Task.Run(() => ReceiveLoop(cts.Token));
+
+            Dispatcher.Invoke(() =>
             {
-                MessageBox.Show($"Nije moguce prijaviti se!\nGreska: {ex.Message}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+                AuthGrid.Visibility = Visibility.Collapsed;
+                DevicesGrid.Visibility = Visibility.Visible;
+            });
+            LogBox.AppendText($"[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesna prijava na server!");
         }
 
         void Registracija(object sender, RoutedEventArgs e)
@@ -194,17 +206,127 @@ namespace UserClient
                 using (MemoryStream ms = new MemoryStream())
                 {
                     BinaryFormatter bf = new BinaryFormatter();
-                    BinaryWriter bw = new BinaryWriter(ms);
-                    bw.Write((byte)TipUdpPoruke.Korisnik);
                     bf.Serialize(ms, user);
                     buffer = ms.ToArray();
-                    udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
                 }
+
+                tcpSocket.Send(buffer);
+
+                byte[] odgovor = new byte[16];
+                int received = tcpSocket.Receive(odgovor);
+
+                using (MemoryStream ms = new MemoryStream(odgovor, 0, received))
+                {
+                    BinaryReader br = new BinaryReader(ms);
+                    bool ok = br.ReadBoolean();
+
+                    if (!ok)
+                    {
+                        MessageBox.Show("Neuspesan pokusaj registracije!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    udpPort = br.ReadInt32();
+                }
+
+                udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                udpSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
+                udpServerEP = new IPEndPoint(tcpServerEP.Address, udpPort);
+
+                cts = new CancellationTokenSource();
+                task = Task.Run(() => ReceiveLoop(cts.Token));
+
+                Dispatcher.Invoke(() =>
+                {
+                    AuthGrid.Visibility = Visibility.Collapsed;
+                    DevicesGrid.Visibility = Visibility.Visible;
+                });
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Nije moguce registrovati se!\nGreska: {ex.Message}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        Komanda GenerisiKomandu(TipKomande tip)
+        {
+            Komanda komanda = new Komanda();
+            komanda.tipKomande = tip;
+            komanda.idKorisnika = user.Id;
+            komanda.rezultatKomande = RezultatKomande.Slanje;
+            komanda.dodatnaPoruka = "";
+            LogBox.AppendText($"[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesno generisana komanda {tip}!");
+            return komanda;
+        }
+
+        void PosaljiKomandu(Komanda komanda)
+        {
+            byte[] buffer;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                BinaryWriter bw = new BinaryWriter(ms);
+                BinaryFormatter bf = new BinaryFormatter();
+
+                bw.Write((byte)TipPodatka.Komanda);
+                bf.Serialize(ms, komanda);
+
+                buffer = ms.ToArray();
+                udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+            }
+        }
+
+        void KapijaToggle(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.KapijaToggle);
+            PosaljiKomandu(komanda);
+        }
+
+        void KlimaToggle(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.KlimaToggle);
+            PosaljiKomandu(komanda);
+        }
+
+        void KlimaRezimToggle(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.KlimaRezim);
+            PosaljiKomandu(komanda);
+        }
+        
+        void KlimaUvecajTemp(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.KlimaUvecajTemp);
+            PosaljiKomandu(komanda);
+        }
+
+        void KlimaSmanjiTemp(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.KlimaSmanjiTemp);
+            PosaljiKomandu(komanda);
+        }
+
+        void SvetlaToggle(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.SvetlaToggle);
+            PosaljiKomandu(komanda);
+        }
+
+        void SvetlaBojaToggle(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.SvetlaBoja);
+            PosaljiKomandu(komanda);
+        }
+
+        void SvetlaPojacajOsv(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.SvetlaPovecajOsvetljenje);
+            PosaljiKomandu(komanda);
+        }
+
+        void SvetlaSmanjiOsv(object sender, RoutedEventArgs e)
+        {
+            Komanda komanda = GenerisiKomandu(TipKomande.SvetlaSmanjiOsvetljenje);
+            PosaljiKomandu(komanda);
         }
 
         void ShowRegister(object sender, RoutedEventArgs e)

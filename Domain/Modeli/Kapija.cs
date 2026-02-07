@@ -7,7 +7,7 @@ namespace Domain.Modeli
     [Serializable]
     public class Kapija : IDevice
     {
-        public TipUredjaja DeviceType => TipUredjaja.Kapija;
+        public TipPodatka DeviceType => TipPodatka.Kapija;
         public long Id { get; set; }
         public string Name { get; set; }
         public bool Otvorena { get; set; } = false;

@@ -4,6 +4,6 @@
     {
         Grejanje,
         Hladjenje,
-        Isusivanje
+        Ventilacija
     }
 }

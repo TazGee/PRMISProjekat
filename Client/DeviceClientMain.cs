@@ -1,6 +1,6 @@
-﻿using Domain.Enumeratori;
-using Domain.Interfejsi;
+﻿using Domain.Interfejsi;
 using Domain.Modeli;
+using Domain.Enumeratori;
 using System;
 using System.IO;
 using System.Net;
@@ -13,12 +13,13 @@ namespace DeviceClient
     {
         static void Main(string[] args)
         {
+            IDevice uredjaj;
+
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine("Client started...");
 
             EndPoint posiljaocEP = new IPEndPoint(IPAddress.Any, 0);
 
-            IDevice uredjaj;
             int unos = 0;
             do
             {
@@ -90,31 +91,160 @@ namespace DeviceClient
                 byte[] data = new byte[received];
                 Array.Copy(buffer, data, received);
 
-                IDevice serverUredjaj;
+                Komanda komanda;
 
                 using (MemoryStream ms = new MemoryStream(data))
                 {
                     BinaryFormatter bf = new BinaryFormatter();
-                    BinaryReader br = new BinaryReader(ms);
-                    TipUredjaja tipUredjaja = (TipUredjaja)br.ReadByte();
-
-                    if (tipUredjaja == TipUredjaja.Kapija) serverUredjaj = (Kapija)bf.Deserialize(ms);
-                    else if (tipUredjaja == TipUredjaja.Kapija) serverUredjaj = (Klima)bf.Deserialize(ms);
-                    else if (tipUredjaja == TipUredjaja.Svetla) serverUredjaj = (Svetla)bf.Deserialize(ms);
-                    else throw new Exception("Poslat nepoznat tip uredjaja od strane servera!");
+                    komanda = (Komanda)bf.Deserialize(ms);
                 }
+                Komanda povratna = ObradiKomandu(komanda, uredjaj);
 
-                uredjaj = serverUredjaj;
+                if(povratna.idKorisnika != -1 && povratna.tipKomande != TipKomande.Nepoznata)
+                {
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        BinaryWriter bw = new BinaryWriter(ms);
+                        BinaryFormatter bf = new BinaryFormatter();
 
-                if(uredjaj is Kapija)
-                    Console.WriteLine($"Server je izmenio {((Kapija)uredjaj).Name} | Otvorena: {((Kapija)uredjaj).Otvorena.ToString()}");
-                else if(uredjaj is Klima)
-                    Console.WriteLine($"Server je izmenio {((Klima)uredjaj).Name} | Upaljena: {((Klima)uredjaj).Upaljena.ToString()} | {((Klima)uredjaj).RezimRada.ToString()} | {((Klima)uredjaj).Temperatura}C");
-                else
-                    Console.WriteLine($"Server je izmenio {((Svetla)uredjaj).Name} | Upaljena: {((Svetla)uredjaj).Upaljena.ToString()} | {((Svetla)uredjaj).NijansaSvetla.ToString()} | {((Svetla)uredjaj).ProcenatOsvetljenja}% osvetljenja");
-            
-                // 
+                        bw.Write((byte)TipPodatka.Komanda);
+                        bf.Serialize(ms, komanda);
+
+                        if(uredjaj is Kapija) bw.Write((byte)TipPodatka.Kapija);
+                        else if (uredjaj is Klima) bw.Write((byte)TipPodatka.Klima);
+                        else bw.Write((byte)TipPodatka.Svetla);
+                        bf.Serialize(ms, uredjaj);
+
+                        buffer = ms.ToArray();
+                        udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+                    }
+                }
             }
+        }
+
+        static Komanda ObradiKomandu(Komanda komanda, IDevice uredjaj)
+        {
+            if(uredjaj is Kapija kapija)
+            {
+                if(komanda.tipKomande == TipKomande.KapijaToggle)
+                {
+                    kapija.Otvorena = !kapija.Otvorena;
+                    komanda.dodatnaPoruka = $"Kapija {kapija.Name} uspesno otvorena/zatvorena!";
+                    komanda.rezultatKomande = RezultatKomande.Uspesna;
+                    return komanda;
+                }
+            }
+            else if(uredjaj is Klima klima)
+            {
+                if (komanda.tipKomande == TipKomande.KlimaToggle)
+                {
+                    klima.Upaljena = !klima.Upaljena;
+                    komanda.dodatnaPoruka = $"Klima {((Kapija)uredjaj).Name} uspesno upaljena/ugasena!";
+                    komanda.rezultatKomande = RezultatKomande.Uspesna;
+                    return komanda;
+                }
+                else if (komanda.tipKomande == TipKomande.KlimaRezim)
+                {
+                    if (klima.RezimRada == RezimiKlime.Ventilacija) klima.RezimRada = RezimiKlime.Grejanje;
+                    else if (klima.RezimRada == RezimiKlime.Grejanje) klima.RezimRada = RezimiKlime.Hladjenje;
+                    else klima.RezimRada = RezimiKlime.Ventilacija;
+
+                    komanda.dodatnaPoruka = $"Rezim klime {((Kapija)uredjaj).Name} uspesno promenjen na {klima.RezimRada}!";
+                    komanda.rezultatKomande = RezultatKomande.Uspesna;
+                    return komanda;
+                }
+                else if (komanda.tipKomande == TipKomande.KlimaUvecajTemp)
+                {
+                    if(klima.Temperatura >= 30)
+                    {
+                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} nemoze da se promeni, vec je maksimalna!";
+                        komanda.rezultatKomande = RezultatKomande.Neuspesna;
+                        return komanda;
+                    }
+                    else
+                    {
+                        klima.Temperatura++;
+                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} uspesno uvecana na {klima.Temperatura}!";
+                        komanda.rezultatKomande = RezultatKomande.Uspesna;
+                        return komanda;
+                    }
+                }
+                else
+                {
+                    if (klima.Temperatura <= 18)
+                    {
+                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} nemoze da se promeni, vec je minimalna!";
+                        komanda.rezultatKomande = RezultatKomande.Neuspesna;
+                        return komanda;
+                    }
+                    else
+                    {
+                        klima.Temperatura--;
+                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} uspesno umanjena na {klima.Temperatura}!";
+                        komanda.rezultatKomande = RezultatKomande.Uspesna;
+                        return komanda;
+                    }
+                }
+            }
+            else if(uredjaj is Svetla svetla)
+            {
+                if (komanda.tipKomande == TipKomande.SvetlaToggle)
+                {
+                    svetla.Upaljena = !svetla.Upaljena;
+                    komanda.dodatnaPoruka = $"Svetla {svetla.Name} uspesno upaljena/ugasena!";
+                    komanda.rezultatKomande = RezultatKomande.Uspesna;
+                    return komanda;
+                }
+                else if (komanda.tipKomande == TipKomande.SvetlaBoja)
+                {
+                    if (svetla.NijansaSvetla == NijanseSvetla.Bela) svetla.NijansaSvetla = NijanseSvetla.Crvena;
+                    if (svetla.NijansaSvetla == NijanseSvetla.Crvena) svetla.NijansaSvetla = NijanseSvetla.Zelena;
+                    if (svetla.NijansaSvetla == NijanseSvetla.Zelena) svetla.NijansaSvetla = NijanseSvetla.Plava;
+                    else svetla.NijansaSvetla = NijanseSvetla.Bela;
+
+                    komanda.dodatnaPoruka = $"Boja svetla {svetla.Name} uspesno promenjena na {svetla.NijansaSvetla}!";
+                    komanda.rezultatKomande = RezultatKomande.Uspesna;
+                    return komanda;
+                }
+                else if (komanda.tipKomande == TipKomande.SvetlaPovecajOsvetljenje)
+                {
+                    if (svetla.ProcenatOsvetljenja >= 100)
+                    {
+                        komanda.dodatnaPoruka = $"Osvetljenje svetla {svetla.Name} nemoze da se promeni, vec je maksimalno!";
+                        komanda.rezultatKomande = RezultatKomande.Neuspesna;
+                        return komanda;
+                    }
+                    else
+                    {
+                        svetla.ProcenatOsvetljenja += 10;
+                        komanda.dodatnaPoruka = $"Osvetljenje svetla {svetla.Name} uspesno uvecano na {svetla.ProcenatOsvetljenja}!";
+                        komanda.rezultatKomande = RezultatKomande.Uspesna;
+                        return komanda;
+                    }
+                }
+                else
+                {
+                    if (svetla.ProcenatOsvetljenja <= 0)
+                    {
+                        komanda.dodatnaPoruka = $"Osvetljenje svetla {svetla.Name} nemoze da se promeni, vec je minimalno!";
+                        komanda.rezultatKomande = RezultatKomande.Neuspesna;
+                        return komanda;
+                    }
+                    else
+                    {
+                        svetla.ProcenatOsvetljenja += 10;
+                        komanda.dodatnaPoruka = $"Osvetljenje svetla {svetla.Name} uspesno umanjeno na {svetla.ProcenatOsvetljenja}!";
+                        komanda.rezultatKomande = RezultatKomande.Uspesna;
+                        return komanda;
+                    }
+                }
+            }
+            Komanda k;
+            k.tipKomande = TipKomande.Nepoznata;
+            k.rezultatKomande = RezultatKomande.Neuspesna;
+            k.idKorisnika = -1;
+            k.dodatnaPoruka = "";
+            return k;
         }
     }
 }

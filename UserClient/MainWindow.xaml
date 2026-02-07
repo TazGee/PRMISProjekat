@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UserClient"
         mc:Ignorable="d"
-        Title="SmartHouse" Height="480" Width="800"
+        Title="SmartHouse" Height="580" Width="800"
         Background="#9C0F68"
         BorderBrush="#AD5877">
     <Grid>
@@ -54,6 +54,112 @@
             <Button Content="Registruj se" FontSize="18" Background="#AD5877" Foreground="#FFFFFF" Height="40" Width="180" Margin="0,10,0,10" Click="Registracija"/>
             <Button Content="Prijavi se" Height="25" Background="#AD5877" Foreground="#FFFFFF" FontSize="12" Width="100" Click="ShowLogin"/>
         </StackPanel>
+        </Grid>
+        
+        
+        <Grid x:Name="DevicesGrid" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Foreground="#FFFFFF" Text="UPRAVLJANJE UREDJAJIMA" FontSize="44" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,10,0,20"/>
+
+            <Grid Grid.Row="1" Margin="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Background="#AD5877" Padding="5">
+                    <StackPanel>
+                        <TextBlock Text="Uredjaji" Foreground="#FFFFFF" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,5,0,10"/>
+                        <ListBox x:Name="DevicesList" Background="#9C0F68" Foreground="#FFFFFF" BorderBrush="#FFFFFF" FontSize="14" Height="385"/>
+                    </StackPanel>
+                </Border>
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="200"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#AD5877" Padding="10">
+                        <Grid>
+                            <TextBlock x:Name="NijeIzabranText" VerticalAlignment="Center" TextAlignment="Center" HorizontalAlignment="Center" FontSize="23" Foreground="White" Background="Transparent">
+                                Izaberite uredjaj kako bi
+                                <LineBreak/>
+                                mogli da ga kontrolisete!
+                            </TextBlock>
+                            <Grid x:Name="KapijaControl" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="150"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Stanje uredjaja" Foreground="#FFFFFF" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+                                    <TextBlock x:Name="KapijaName" Text="Naziv: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="KapijaStatus" Text="Status: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <Button x:Name="KapijaOtvoriZatvori" Click="KapijaToggle" Content="Otvori/Zatvori" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <Grid x:Name="KlimaControl" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="150"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Stanje uredjaja" Foreground="#FFFFFF" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+                                    <TextBlock x:Name="KlimaName" Text="Naziv: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="KlimaStatus" Text="Status: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="KlimaRezim" Text="Rezim: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="KlimaTemperatura" Text="Temperatura: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <Button x:Name="KlimaUpaliUgasi" Click="KlimaToggle" Content="Upali/Ugasi" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                    <Button x:Name="KlimaPromeniRezim" Click="KlimaRezimToggle" Content="Promeni rezim" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                    <Button x:Name="KlimaUvecajTemperaturu" Click="KlimaUvecajTemp" Content="+ Uvecaj temperaturu" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                    <Button x:Name="KlimaSmanjiTemperaturu" Click="KlimaSmanjiTemp" Content="- Smanji temperaturu" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <Grid x:Name="SvetlaControl" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="150"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Stanje uredjaja" Foreground="#FFFFFF" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+                                    <TextBlock x:Name="SvetlaName" Text="Naziv: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="SvetlaStatus" Text="Status: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="SvetlaBoja" Text="Boja: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                    <TextBlock x:Name="SvetlaSvetlina" Text="Svetlina: /" Foreground="#FFFFFF" FontSize="14" Margin="0,2"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <Button x:Name="SvetlaUpaliUgasi" Click="SvetlaToggle" Content="Upali/Ugasi" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                    <Button x:Name="SvetlaPromeniBoju" Click="SvetlaBojaToggle" Content="Promeni boju" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                    <Button x:Name="SvetlaPojacajOsvetljenje" Click="SvetlaPojacajOsv" Content="+ Pojacaj osvetljenje" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                    <Button x:Name="SvetlaSmanjiOsvetljenje" Click="SvetlaSmanjiOsv" Content="- Smanji osvetljenje" Height="35" Margin="0,5" Background="#9C0F68" Foreground="#FFFFFF"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Row="2" Background="#AD5877" Padding="10">
+                        <StackPanel>
+                            <TextBlock Text="Log" Foreground="#FFFFFF" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <TextBox x:Name="LogBox" Background="#9C0F68" Foreground="#FFFFFF" BorderBrush="#FFFFFF" FontSize="14" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" Height="168"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

@@ -2,8 +2,6 @@
 {
     public enum NijanseSvetla
     {
-        Topla,
-        Hladna,
         Bela,
         Crvena,
         Plava,

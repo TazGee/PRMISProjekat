@@ -44,11 +44,13 @@
   <ItemGroup>
     <Compile Include="Enumeratori\NijanseSvetla.cs" />
     <Compile Include="Enumeratori\RezimiKlime.cs" />
-    <Compile Include="Enumeratori\TipUredjaja.cs" />
-    <Compile Include="Enumeratori\TipUdpPoruke.cs" />
+    <Compile Include="Enumeratori\RezultatKomande.cs" />
+    <Compile Include="Enumeratori\TipKomande.cs" />
+    <Compile Include="Enumeratori\TipPodatka.cs" />
     <Compile Include="Interfejsi\IDevice.cs" />
     <Compile Include="Modeli\Kapija.cs" />
     <Compile Include="Modeli\Klima.cs" />
+    <Compile Include="Modeli\Komanda.cs" />
     <Compile Include="Modeli\Svetla.cs" />
     <Compile Include="Modeli\Korisnik.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

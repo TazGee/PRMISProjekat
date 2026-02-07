@@ -7,7 +7,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
 
 namespace Server
 {
@@ -26,6 +25,8 @@ namespace Server
                 new Korisnik("Nikola Tasic", "taske", "123", false),
                 new Korisnik("Jovana Boljanovic", "joki", "123", false)
             };
+
+            Dictionary<Korisnik, IPEndPoint> korisnickeSesije = new Dictionary<Korisnik, IPEndPoint>();
 
             List<Socket> korisnickiSocketi = new List<Socket>();
 
@@ -54,6 +55,7 @@ namespace Server
                 Socket.Select(soketi, null, null, 1_000_000);
 
                 Socket sc = null;
+                Korisnik kor = null;
 
                 foreach (Socket s in soketi)
                 {
@@ -61,18 +63,52 @@ namespace Server
                     {
                         Socket clientSocket = tcpSocket.Accept();
                         IPEndPoint clientEP = (IPEndPoint)clientSocket.RemoteEndPoint;
-                        Console.WriteLine($"Korisnik {clientEP} povezan preko TCP-a");
 
-                        int udpPort = ++nextPort;
-                        byte[] bytes = BitConverter.GetBytes(udpPort);
+                        int received = clientSocket.Receive(buffer);
 
-                        sc = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                        sc.Bind(new IPEndPoint(IPAddress.Any, udpPort));
+                        Korisnik korisnik;
+                        using (MemoryStream ms = new MemoryStream(buffer, 0, received))
+                        {
+                            BinaryFormatter bf = new BinaryFormatter();
+                            korisnik = (Korisnik)bf.Deserialize(ms);
+                        }
 
-                        clientSocket.Send(bytes);
-                        clientSocket.Close();
+                        string rezultat = ObradiKorisnika(korisnik, listaKorisnika);
 
-                        Console.WriteLine($"Dodeljen UDP port {udpPort} korisniku {clientEP}");
+                        if (rezultat == "uspesno" || rezultat == "regUspesno")
+                        {
+                            int udpPort = ++nextPort;
+
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                BinaryWriter bw = new BinaryWriter(ms);
+                                bw.Write((byte)TipPodatka.Poruka);    
+                                bw.Write(udpPort);    
+                                byte[] odgovor = ms.ToArray();
+                                clientSocket.Send(odgovor);
+                            }
+
+                            kor = korisnik;
+                            sc = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                            sc.Bind(new IPEndPoint(IPAddress.Any, udpPort));
+                            korisnickeSesije.Add(korisnik, (IPEndPoint)clientSocket.RemoteEndPoint);
+
+                            //PosaljiListuUredjaja(sc, uredjaji);
+
+                            Console.WriteLine($"Korisnik {korisnik.Nickname} prijavljen, UDP port {udpPort}");
+                        }
+                        else
+                        {
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                BinaryWriter bw = new BinaryWriter(ms);
+                                bw.Write((byte)TipPodatka.Poruka);
+                                byte[] odgovor = ms.ToArray();
+                                clientSocket.Send(odgovor);
+                            }
+                        }
+
+                        //clientSocket.Close();
                     }
                     else if (s == udpSocket)
                     {
@@ -81,73 +117,160 @@ namespace Server
                         byte[] data = new byte[received];
                         Array.Copy(buffer, data, received);
 
-                        IDevice uredjaj;
+                        IDevice uredjaj = null;
+
+                        Komanda komanda = new Komanda();
 
                         using (MemoryStream ms = new MemoryStream(data))
                         {
                             BinaryReader br = new BinaryReader(ms);
                             BinaryFormatter bf = new BinaryFormatter();
 
-                            TipUredjaja type = (TipUredjaja)br.ReadByte();
+                            TipPodatka type = (TipPodatka)br.ReadByte();
 
-                            if (type == TipUredjaja.Kapija) uredjaj = (Kapija)bf.Deserialize(ms);
-                            else if (type == TipUredjaja.Klima) uredjaj = (Klima)bf.Deserialize(ms);
-                            else if (type == TipUredjaja.Svetla) uredjaj = (Svetla)bf.Deserialize(ms);
+                            if (type == TipPodatka.Kapija) uredjaj = (Kapija)bf.Deserialize(ms);
+                            else if (type == TipPodatka.Klima) uredjaj = (Klima)bf.Deserialize(ms);
+                            else if (type == TipPodatka.Svetla) uredjaj = (Svetla)bf.Deserialize(ms);
+                            else if (type == TipPodatka.Komanda)
+                            {
+                                komanda = (Komanda)bf.Deserialize(ms);
+                                type = (TipPodatka)br.ReadByte();
+                                if (type == TipPodatka.Kapija) uredjaj = (Kapija)bf.Deserialize(ms);
+                                else if (type == TipPodatka.Klima) uredjaj = (Klima)bf.Deserialize(ms);
+                                else if (type == TipPodatka.Svetla) uredjaj = (Svetla)bf.Deserialize(ms);
+                            }
                             else throw new Exception("Nepoznat tip uređaja");
                         }
 
-                        bool pronasao = false;
-                        foreach (IDevice u in uredjaji.Values)
+                        if(uredjaj != null)
                         {
-                            if(u.GetID() == uredjaj.GetID())
+                            IPEndPoint pronasao = null;
+                            foreach (IPEndPoint ip in uredjaji.Keys)
                             {
-                                pronasao = true;
-
-                                
-
-                                break;
+                                if (uredjaji[ip].GetID() == uredjaj.GetID())
+                                {
+                                    pronasao = ip;
+                                    break;
+                                }
                             }
-                        }
-                        if(!pronasao)
-                        {
-                            uredjaji[(IPEndPoint)posiljaocEP] = uredjaj;
+                            if (pronasao == null)
+                            {
+                                uredjaji[(IPEndPoint)posiljaocEP] = uredjaj;
 
-                            Console.WriteLine($"Povezao se novi uredjaj: {uredjaj.GetProperties()}");
-                            Console.WriteLine($"Primljeno od {posiljaocEP}");
+                                Console.WriteLine($"Povezao se novi uredjaj: {uredjaj.GetProperties()}");
+                                Console.WriteLine($"Primljeno od {posiljaocEP}");
+                            }
+                            else
+                            {
+                                uredjaji[pronasao] = uredjaj;
+                                Console.WriteLine($"{komanda.dodatnaPoruka}");
+
+                                IPEndPoint korisnikEP = null;
+
+                                foreach(Korisnik k in korisnickeSesije.Keys)
+                                {
+                                    if (k.Id == komanda.idKorisnika)
+                                    {
+                                        korisnikEP = korisnickeSesije[k];
+                                        break;
+                                    }
+                                }
+
+                                if (korisnikEP == null) continue;
+
+                                using (MemoryStream ms = new MemoryStream())
+                                {
+                                    BinaryWriter bw = new BinaryWriter(ms);
+                                    BinaryFormatter bf = new BinaryFormatter();
+
+                                    bw.Write((byte)TipPodatka.Komanda);
+                                    bf.Serialize(ms, komanda);
+
+                                    buffer = ms.ToArray();
+                                    udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, korisnikEP);
+                                }
+                            }
                         }
                     }
                     else
                     {
-                        int received = s.ReceiveFrom(buffer, ref posiljaocEP);
+                        int received = udpSocket.ReceiveFrom(buffer, ref posiljaocEP);
 
                         byte[] data = new byte[received];
                         Array.Copy(buffer, data, received);
 
+                        Komanda komanda;
+                        komanda.idKorisnika = -1;
+
                         using (MemoryStream ms = new MemoryStream(data))
                         {
                             BinaryFormatter bf = new BinaryFormatter();
-                            BinaryReader br = new BinaryReader(ms);
+                            komanda = (Komanda)bf.Deserialize(ms);
+                        }
 
-                            TipUdpPoruke tipPoruke = (TipUdpPoruke)br.ReadByte();
-
-                            if(tipPoruke == TipUdpPoruke.Korisnik)
+                        if (komanda.idKorisnika != -1)
+                        {
+                            Korisnik k = null;
+                            foreach (Korisnik korisnik in korisnickeSesije.Keys)
                             {
-                                Korisnik korisnik = (Korisnik)bf.Deserialize(ms);
-                                byte[] binarnaPoruka = Encoding.UTF8.GetBytes(ObradiKorisnika(korisnik, listaKorisnika));
-                                int brBajta = s.SendTo(binarnaPoruka, 0, binarnaPoruka.Length, SocketFlags.None, posiljaocEP);
+                                if(komanda.idKorisnika == k.Id)
+                                {
+                                    k = korisnik;
+                                    break;
+                                }
                             }
-                            else
-                            {
 
+                            if(k != null)
+                            {
+                                Console.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss")}] - Korisnik {k.Nickname} je uradio komandu: {komanda.dodatnaPoruka}");
+
+                                using (MemoryStream ms = new MemoryStream())
+                                {
+                                    BinaryWriter bw = new BinaryWriter(ms);
+                                    BinaryFormatter bf = new BinaryFormatter();
+
+                                    bw.Write((byte)TipPodatka.Komanda);
+                                    bf.Serialize(ms, komanda);
+
+                                    buffer = ms.ToArray();
+                                    udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, korisnickeSesije[k]);
+                                }
                             }
                         }
                     }
                 }
-                if(sc != null)
+                if(sc != null && kor != null)
                 {
                     korisnickiSocketi.Add(sc);
+                    Console.WriteLine($"Novi korisnik {kor.Nickname} dodat na dictionary sa socketima...");
                 }
             }
+        }
+
+        static void PosaljiListuUredjaja(Socket korisnickiSocket, Dictionary<IPEndPoint, IDevice> uredjaji)
+        {
+            byte[] buffer;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                BinaryWriter bw = new BinaryWriter(ms);
+                BinaryFormatter bf = new BinaryFormatter();
+
+                bw.Write((int)uredjaji.Count);
+
+                foreach (var u in uredjaji.Values)
+                {
+                    bw.Write((byte)u.DeviceType);
+                    bf.Serialize(ms, u);
+                }
+
+                buffer = ms.ToArray();
+                korisnickiSocket.Send(buffer);
+            }
+        }
+
+        static void AzurirajUredjaj()
+        {
+            
         }
 
         static string ObradiKorisnika(Korisnik korisnik, List<Korisnik> listaKorisnika)
