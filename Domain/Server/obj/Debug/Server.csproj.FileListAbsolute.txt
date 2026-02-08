@@ -1,0 +1,11 @@
+D:\Projekti\PRMISProjekat\Server\bin\Debug\Server.exe.config
+D:\Projekti\PRMISProjekat\Server\bin\Debug\Server.exe
+D:\Projekti\PRMISProjekat\Server\bin\Debug\Server.pdb
+D:\Projekti\PRMISProjekat\Server\bin\Debug\Domain.dll
+D:\Projekti\PRMISProjekat\Server\bin\Debug\Domain.pdb
+D:\Projekti\PRMISProjekat\Server\obj\Debug\Server.csproj.AssemblyReference.cache
+D:\Projekti\PRMISProjekat\Server\obj\Debug\Server.csproj.CoreCompileInputs.cache
+D:\Projekti\PRMISProjekat\Server\obj\Debug\Server.csproj.Up2Date
+D:\Projekti\PRMISProjekat\Server\obj\Debug\Server.exe
+D:\Projekti\PRMISProjekat\Server\obj\Debug\Server.pdb
+D:\Projekti\PRMISProjekat\Server\obj\Debug\Server.exe.config

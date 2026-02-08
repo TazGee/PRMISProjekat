@@ -1,0 +1,11 @@
+D:\Projekti\PRMISProjekat\Client\bin\Debug\Client.exe
+D:\Projekti\PRMISProjekat\Client\bin\Debug\Domain.dll
+D:\Projekti\PRMISProjekat\Client\bin\Debug\Domain.pdb
+D:\Projekti\PRMISProjekat\Client\obj\Debug\DeviceClient.csproj.AssemblyReference.cache
+D:\Projekti\PRMISProjekat\Client\obj\Debug\DeviceClient.csproj.CoreCompileInputs.cache
+D:\Projekti\PRMISProjekat\Client\obj\Debug\Client.exe
+D:\Projekti\PRMISProjekat\Client\obj\Debug\Client.pdb
+D:\Projekti\PRMISProjekat\Client\bin\Debug\Client.exe.config
+D:\Projekti\PRMISProjekat\Client\bin\Debug\Client.pdb
+D:\Projekti\PRMISProjekat\Client\obj\Debug\DeviceCl.D87C4E42.Up2Date
+D:\Projekti\PRMISProjekat\Client\obj\Debug\Client.exe.config
