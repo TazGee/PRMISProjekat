@@ -2,8 +2,10 @@
 using Domain.Interfejsi;
 using Domain.Modeli;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -127,25 +129,71 @@ namespace UserClient
                         }
                         else if (type == TipPodatka.ListaUredjaja)
                         {
-                            Dispatcher.Invoke(() => { LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Server salje listu uredjaja za azuriranje..."); });
+                            Dispatcher.Invoke(() =>
+                            {
+                                LogBox.AppendText($"\n[{DateTime.Now:HH:mm:ss}] - Server salje listu uredjaja za azuriranje...");
+                            });
 
                             int count = br.ReadInt32();
 
-                            IDevice uredjaj;
+                            var novaLista = new List<IDevice>();
 
                             for (int i = 0; i < count; i++)
                             {
                                 TipPodatka tip = (TipPodatka)br.ReadByte();
+                                IDevice uredjaj;
+
                                 if (tip == TipPodatka.Kapija) uredjaj = (Kapija)bf.Deserialize(ms);
                                 else if (tip == TipPodatka.Klima) uredjaj = (Klima)bf.Deserialize(ms);
                                 else uredjaj = (Svetla)bf.Deserialize(ms);
 
-                                Dispatcher.Invoke(() => { ListaUredjaja.Add(uredjaj); });
+                                novaLista.Add(uredjaj);
                             }
 
+                            Dispatcher.Invoke(() =>
+                            {
+                                int? selectedId = selectedDevice?.GetID();
 
-                            Dispatcher.Invoke(() => { LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Server je poslao {count} novih uredjaja."); });
-                            Dispatcher.Invoke(() => { ZahtevanjeUredjajaButton.Visibility = Visibility.Collapsed; });
+                                foreach (var novi in novaLista)
+                                {
+                                    var postojeci = ListaUredjaja
+                                        .FirstOrDefault(x => x.GetID() == novi.GetID());
+
+                                    if (postojeci == null)
+                                    {
+                                        ListaUredjaja.Add(novi);
+                                    }
+                                    else
+                                    {
+                                        UpdateDeviceState(postojeci, novi);
+                                    }
+                                }
+
+                                for (int i = ListaUredjaja.Count - 1; i >= 0; i--)
+                                {
+                                    if (!novaLista.Any(x => x.GetID() == ListaUredjaja[i].GetID()))
+                                        ListaUredjaja.RemoveAt(i);
+                                }
+
+                                if (selectedId != null)
+                                {
+                                    selectedDevice = ListaUredjaja.FirstOrDefault(x => x.GetID() == selectedId);
+                                    DevicesList.SelectedItem = selectedDevice;
+                                    OsveziPrikazSelektovanog();
+                                }
+                            });
+                        }
+                        else if (type == TipPodatka.Timeout)
+                        {
+                            Disconnect();
+
+                            Dispatcher.Invoke(() =>
+                            {
+                                ConnectionGrid.Visibility = Visibility.Visible;
+                                DevicesGrid.Visibility = Visibility.Collapsed;
+                                AuthGrid.Visibility = Visibility.Collapsed;
+                            });
+                            MessageBox.Show("Server je ugasio vasu sesiju zbog neaktivnosti!", "Timeout", MessageBoxButton.OK, MessageBoxImage.Error);
                         }
                         else throw new Exception("Server je poslao nepoznat tip podatka");
                     }
@@ -166,54 +214,70 @@ namespace UserClient
             });
         }
 
+        static void UpdateDeviceState(IDevice target, IDevice source)
+        {
+            if (target is Kapija t1 && source is Kapija s1)
+            {
+                t1.Name = s1.Name;
+                t1.Otvorena = s1.Otvorena;
+            }
+            else if (target is Klima t2 && source is Klima s2)
+            {
+                t2.Name = s2.Name;
+                t2.Upaljena = s2.Upaljena;
+                t2.RezimRada = s2.RezimRada;
+                t2.Temperatura = s2.Temperatura;
+            }
+            else if (target is Svetla t3 && source is Svetla s3)
+            {
+                t3.Name = s3.Name;
+                t3.Upaljena = s3.Upaljena;
+                t3.NijansaSvetla = s3.NijansaSvetla;
+                t3.ProcenatOsvetljenja = s3.ProcenatOsvetljenja;
+            }
+        }
+
+        void OsveziPrikazSelektovanog()
+        {
+            if (selectedDevice == null) return;
+
+            if (selectedDevice is Kapija k)
+            {
+                KapijaControl.Visibility = Visibility.Visible;
+                KlimaControl.Visibility = Visibility.Collapsed;
+                SvetlaControl.Visibility = Visibility.Collapsed;
+
+                KapijaName.Text = $"Naziv: {k.Name}";
+                KapijaStatus.Text = k.Otvorena ? "Status: Otvorena" : "Status: Zatvorena";
+            }
+            else if (selectedDevice is Klima kl)
+            {
+                KapijaControl.Visibility = Visibility.Collapsed;
+                KlimaControl.Visibility = Visibility.Visible;
+                SvetlaControl.Visibility = Visibility.Collapsed;
+
+                KlimaName.Text = $"Naziv: {kl.Name}";
+                KlimaStatus.Text = kl.Upaljena ? "Status: Upaljena" : "Status: Ugasena";
+                KlimaRezim.Text = $"Rezim: {kl.RezimRada}";
+                KlimaTemperatura.Text = $"Temperatura: {kl.Temperatura}C";
+            }
+            else if (selectedDevice is Svetla s)
+            {
+                KapijaControl.Visibility = Visibility.Collapsed;
+                KlimaControl.Visibility = Visibility.Collapsed;
+                SvetlaControl.Visibility = Visibility.Visible;
+
+                SvetlaName.Text = $"Naziv: {s.Name}";
+                SvetlaStatus.Text = s.Upaljena ? "Status: Upaljena" : "Status: Ugasena";
+                SvetlaBoja.Text = $"Boja: {s.NijansaSvetla}";
+                SvetlaSvetlina.Text = $"Svetlina: {s.ProcenatOsvetljenja}%";
+            }
+        }
+
         void DevicesListSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             selectedDevice = DevicesList.SelectedItem as IDevice;
-            if (selectedDevice == null) return;
-
-            if(selectedDevice is Kapija)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    KapijaControl.Visibility = Visibility.Visible;
-                    KlimaControl.Visibility = Visibility.Collapsed;
-                    SvetlaControl.Visibility = Visibility.Collapsed;
-
-                    KapijaName.Text = $"Naziv: {((Kapija)selectedDevice).Name}";
-                    if(((Kapija)selectedDevice).Otvorena) KapijaStatus.Text = "Status: Otvorena";
-                    else KapijaStatus.Text = "Status: Zatvorena";
-                });
-            }
-            else if (selectedDevice is Klima)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    KapijaControl.Visibility = Visibility.Collapsed;
-                    KlimaControl.Visibility = Visibility.Visible;
-                    SvetlaControl.Visibility = Visibility.Collapsed;
-
-                    KlimaName.Text = $"Naziv: {((Klima)selectedDevice).Name}";
-                    if(((Klima)selectedDevice).Upaljena) KlimaStatus.Text = "Status: Upaljena";
-                    else KlimaStatus.Text = "Status: Ugasena";
-                    KlimaRezim.Text = $"Rezim: {((Klima)selectedDevice).RezimRada}";
-                    KlimaTemperatura.Text = $"Termperatura: {((Klima)selectedDevice).Temperatura}C";
-                });
-            }
-            else
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    KapijaControl.Visibility = Visibility.Collapsed;
-                    KlimaControl.Visibility = Visibility.Collapsed;
-                    SvetlaControl.Visibility = Visibility.Visible;
-
-                    SvetlaName.Text = $"Naziv: {((Svetla)selectedDevice).Name}";
-                    if (((Svetla)selectedDevice).Upaljena) SvetlaStatus.Text = "Status: Upaljena";
-                    else SvetlaStatus.Text = "Status: Ugasena";
-                    SvetlaBoja.Text = $"Boja: {((Svetla)selectedDevice).NijansaSvetla}";
-                    SvetlaSvetlina.Text = $"Svetlina: {((Svetla)selectedDevice).ProcenatOsvetljenja}%";
-                });
-            }
+            OsveziPrikazSelektovanog();
         }
 
         private void Disconnect()
@@ -241,7 +305,7 @@ namespace UserClient
             }
         }
 
-        void ZahtevajUredjaje(object sender, RoutedEventArgs e)
+        void ZahtevajUredjaje()
         {
             byte[] buffer;
             using (MemoryStream ms = new MemoryStream())
@@ -260,53 +324,61 @@ namespace UserClient
 
         void Prijava(object sender, RoutedEventArgs e)
         {
-            string nick = LoginNickname.Text;
-            string pw = LoginPassword.Password;
-
-            user = new Korisnik(nick, pw, true);
-
-            byte[] buffer;
-            using (MemoryStream ms = new MemoryStream())
+            try
             {
-                BinaryFormatter bf = new BinaryFormatter();
-                bf.Serialize(ms, user);
-                buffer = ms.ToArray();
-            }
+                string nick = LoginNickname.Text;
+                string pw = LoginPassword.Password;
 
-            tcpSocket.Send(buffer);
+                user = new Korisnik(nick, pw, true);
 
-            byte[] odgovor = new byte[16];
-            int received = tcpSocket.Receive(odgovor);
-
-            using (MemoryStream ms = new MemoryStream(odgovor, 0, received))
-            {
-                BinaryReader br = new BinaryReader(ms);
-                bool ok = br.ReadBoolean();
-
-                if (!ok)
+                byte[] buffer;
+                using (MemoryStream ms = new MemoryStream())
                 {
-                    MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    BinaryFormatter bf = new BinaryFormatter();
+                    bf.Serialize(ms, user);
+                    buffer = ms.ToArray();
                 }
 
-                udpPort = br.ReadInt32();
+                tcpSocket.Send(buffer);
+
+                byte[] odgovor = new byte[16];
+                int received = tcpSocket.Receive(odgovor);
+
+                using (MemoryStream ms = new MemoryStream(odgovor, 0, received))
+                {
+                    BinaryReader br = new BinaryReader(ms);
+                    bool ok = br.ReadBoolean();
+
+                    if (!ok)
+                    {
+                        MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    udpPort = br.ReadInt32();
+                }
+
+                user.UDPPort = udpPort;
+
+                udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                udpSocket.Bind(new IPEndPoint(IPAddress.Any, udpPort));
+
+                LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesno kreiran soket sa portom {udpPort}!");
+
+                Dispatcher.Invoke(() =>
+                {
+                    AuthGrid.Visibility = Visibility.Collapsed;
+                    DevicesGrid.Visibility = Visibility.Visible;
+                });
+                LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesna prijava na server!");
+
+                ZapocniRecieve();
+                ZahtevajUredjaje();
             }
-
-            user.UDPPort = udpPort;
-
-            udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            udpSocket.Bind(new IPEndPoint(IPAddress.Any, udpPort));
-
-            LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesno kreiran soket sa portom {udpPort}!");
-
-            Dispatcher.Invoke(() =>
+            catch (Exception ex)
             {
-                AuthGrid.Visibility = Visibility.Collapsed;
-                DevicesGrid.Visibility = Visibility.Visible;
-            });
-            LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesna prijava na server!");
-
-            ZapocniRecieve();
+                MessageBox.Show($"Exception! {ex.Message}", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         void Registracija(object sender, RoutedEventArgs e)
@@ -361,6 +433,7 @@ namespace UserClient
                 LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesna registracija na server!");
 
                 ZapocniRecieve();
+                ZahtevajUredjaje();
             }
             catch (Exception ex)
             {
@@ -396,6 +469,7 @@ namespace UserClient
                 bw.Write((byte)TipPodatka.Komanda);
                 bw.Write(selectedDevice.GetID());
                 bf.Serialize(ms, komanda);
+                bf.Serialize(ms, user);
 
                 buffer = ms.ToArray();
                 udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);

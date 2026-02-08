@@ -67,10 +67,12 @@ namespace DeviceClient
             while (!IPAddress.TryParse((ip ?? "").Trim(), out ipAddress) || !int.TryParse(porttxt, out port) || port < 1 || port > 65535);
 
             Console.Clear();
-            Console.WriteLine("Povezivanje na server...!");
+            Console.WriteLine("Povezani ste na server!");
 
             Socket udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint udpServerEP = new IPEndPoint(ipAddress, port);
+
+            udpSocket.Blocking = false;
 
             byte[] initBuffer;
 
@@ -86,43 +88,46 @@ namespace DeviceClient
 
             while (true)
             {
-                byte[] buffer = new byte[1024];
-                int received = udpSocket.ReceiveFrom(buffer, ref posiljaocEP);
-
-                byte[] data = new byte[received];
-                Array.Copy(buffer, data, received);
-
-                Komanda komanda;
-
-                using (MemoryStream ms = new MemoryStream(data))
+                if (udpSocket.Poll(500 * 1000, SelectMode.SelectRead))
                 {
-                    BinaryFormatter bf = new BinaryFormatter();
-                    komanda = (Komanda)bf.Deserialize(ms);
-                    Console.WriteLine($"Primio komandu od servera: {komanda.rezultatKomande} | {komanda.dodatnaPoruka}");
-                }
-                Komanda povratna = ObradiKomandu(komanda, uredjaj);
-                Console.WriteLine($"Obradio komandu: {povratna.rezultatKomande} | {povratna.dodatnaPoruka}");
+                    byte[] buffer = new byte[2048];
+                    int received = udpSocket.ReceiveFrom(buffer, ref posiljaocEP);
 
-                if (povratna.idKorisnika != -1 && povratna.tipKomande != TipKomande.Nepoznata)
-                {
-                    using (MemoryStream ms = new MemoryStream())
+                    byte[] data = new byte[received];
+                    Array.Copy(buffer, data, received);
+
+                    Komanda komanda;
+
+                    using (MemoryStream ms = new MemoryStream(data))
                     {
-                        BinaryWriter bw = new BinaryWriter(ms);
                         BinaryFormatter bf = new BinaryFormatter();
-
-                        bw.Write((byte)TipPodatka.Komanda);
-                        bf.Serialize(ms, povratna);
-
-                        if (uredjaj is Kapija) bw.Write((byte)TipPodatka.Kapija);
-                        else if (uredjaj is Klima) bw.Write((byte)TipPodatka.Klima);
-                        else bw.Write((byte)TipPodatka.Svetla);
-                        bf.Serialize(ms, uredjaj);
-
-                        buffer = ms.ToArray();
-                        udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+                        komanda = (Komanda)bf.Deserialize(ms);
+                        Console.WriteLine($"Primio komandu od servera: {komanda.rezultatKomande} | {komanda.dodatnaPoruka}");
                     }
+                    Komanda povratna = ObradiKomandu(komanda, uredjaj);
+                    Console.WriteLine($"Obradio komandu: {povratna.rezultatKomande} | {povratna.dodatnaPoruka}");
+
+                    if (povratna.idKorisnika != -1 && povratna.tipKomande != TipKomande.Nepoznata)
+                    {
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            BinaryWriter bw = new BinaryWriter(ms);
+                            BinaryFormatter bf = new BinaryFormatter();
+
+                            bw.Write((byte)TipPodatka.Komanda);
+                            bf.Serialize(ms, povratna);
+
+                            if (uredjaj is Kapija) bw.Write((byte)TipPodatka.Kapija);
+                            else if (uredjaj is Klima) bw.Write((byte)TipPodatka.Klima);
+                            else bw.Write((byte)TipPodatka.Svetla);
+                            bf.Serialize(ms, uredjaj);
+
+                            buffer = ms.ToArray();
+                            udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
+                        }
+                    }
+                    else Console.WriteLine("Komanda nije dobro obradjena!");
                 }
-                else Console.WriteLine("Komanda nije dobro obradjena!");
             }
         }
 
@@ -144,8 +149,8 @@ namespace DeviceClient
                 if (komanda.tipKomande == TipKomande.KlimaToggle)
                 {
                     klima.Upaljena = !klima.Upaljena;
-                    if(klima.Upaljena) komanda.dodatnaPoruka = $"Klima {((Kapija)uredjaj).Name} uspesno upaljena!";
-                    else komanda.dodatnaPoruka = $"Klima {((Kapija)uredjaj).Name} uspesno ugasena!";
+                    if(klima.Upaljena) komanda.dodatnaPoruka = $"Klima {klima.Name} uspesno upaljena!";
+                    else komanda.dodatnaPoruka = $"Klima {klima.Name} uspesno ugasena!";
                     komanda.rezultatKomande = RezultatKomande.Uspesna;
                     return komanda;
                 }
@@ -155,7 +160,7 @@ namespace DeviceClient
                     else if (klima.RezimRada == RezimiKlime.Grejanje) klima.RezimRada = RezimiKlime.Hladjenje;
                     else klima.RezimRada = RezimiKlime.Ventilacija;
 
-                    komanda.dodatnaPoruka = $"Rezim klime {((Kapija)uredjaj).Name} uspesno promenjen na {klima.RezimRada}!";
+                    komanda.dodatnaPoruka = $"Rezim klime {klima.Name} uspesno promenjen na {klima.RezimRada}!";
                     komanda.rezultatKomande = RezultatKomande.Uspesna;
                     return komanda;
                 }
@@ -163,14 +168,14 @@ namespace DeviceClient
                 {
                     if(klima.Temperatura >= 30)
                     {
-                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} nemoze da se promeni, vec je maksimalna!";
+                        komanda.dodatnaPoruka = $"Temperatura klime {klima.Name} nemoze da se promeni, vec je maksimalna!";
                         komanda.rezultatKomande = RezultatKomande.Neuspesna;
                         return komanda;
                     }
                     else
                     {
                         klima.Temperatura++;
-                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} uspesno uvecana na {klima.Temperatura}%!";
+                        komanda.dodatnaPoruka = $"Temperatura klime {klima.Name} uspesno uvecana na {klima.Temperatura}%!";
                         komanda.rezultatKomande = RezultatKomande.Uspesna;
                         return komanda;
                     }
@@ -179,14 +184,14 @@ namespace DeviceClient
                 {
                     if (klima.Temperatura <= 18)
                     {
-                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} nemoze da se promeni, vec je minimalna!";
+                        komanda.dodatnaPoruka = $"Temperatura klime {klima.Name} nemoze da se promeni, vec je minimalna!";
                         komanda.rezultatKomande = RezultatKomande.Neuspesna;
                         return komanda;
                     }
                     else
                     {
                         klima.Temperatura--;
-                        komanda.dodatnaPoruka = $"Temperatura klime {((Kapija)uredjaj).Name} uspesno umanjena na {klima.Temperatura}%!";
+                        komanda.dodatnaPoruka = $"Temperatura klime {klima.Name} uspesno umanjena na {klima.Temperatura}%!";
                         komanda.rezultatKomande = RezultatKomande.Uspesna;
                         return komanda;
                     }

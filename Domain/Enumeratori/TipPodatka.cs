@@ -9,6 +9,7 @@
         Poruka,
         ListaUredjaja,
         ZahtevListeUredjaja,
+        Timeout,
         Nepoznato
     }
 }
