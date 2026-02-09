@@ -21,19 +21,25 @@ namespace UserClient
     /// </summary>
     public partial class MainWindow : Window
     {
+        // -- Socketi koji ce se koristiti
         Socket tcpSocket;
         Socket udpSocket = null;
 
+        // -- Za pokretanje threada za recieve podataka
         CancellationTokenSource cts;
         Task task;
 
+        // -- EndPointi za TCP i UDP
         IPEndPoint tcpServerEP;
         IPEndPoint udpServerEP;
 
+        // -- Konkretan korisnik (objekat) koji ce se koristiti na ovoj instanci
         Korisnik user;
 
+        // -- UDP port koji se dobije od servera
         int udpPort;
 
+        // -- Lista uredjaja koje server salje i trenutno izabran uredjaj
         public ObservableCollection<IDevice> ListaUredjaja { get; } = new ObservableCollection<IDevice>();
         IDevice selectedDevice = null;
 
@@ -43,6 +49,7 @@ namespace UserClient
             DataContext = this;
         }
 
+        // -- Povezivanje na server
         void ConnectToServer(object sender, RoutedEventArgs e)
         {
             // -- Provera ispravnosti IP adrese
@@ -85,13 +92,16 @@ namespace UserClient
             }
         }
 
+        // -- Loop koji sluzi za primanje podataka od servera
         private void ReceiveLoop(CancellationToken token)
         {
+            // -- Cuvanje EndPoint-a servera nakon primanja podataka
             EndPoint posiljaocEP = new IPEndPoint(IPAddress.Any, 0);
 
+            // -- Petlja koja traje dok se ne zatrazi kraj
             while (!token.IsCancellationRequested)
             {
-
+                // -- Ako UDP soket ne postoji
                 if (udpSocket == null)
                 {
                     Dispatcher.Invoke(() =>
@@ -101,63 +111,66 @@ namespace UserClient
                     break;
                 }
 
+                // -- Primanje podataka od servera
                 try
                 {
+                    // -- Buffer za primanje podataka
                     byte[] buf = new byte[10000];
                     int received = udpSocket.ReceiveFrom(buf, ref posiljaocEP);
 
-                    Dispatcher.Invoke(() =>
-                    {
-                        LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Server salje podatke...");
-                    });
+                    Dispatcher.Invoke(() => {LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Server salje podatke...");});
 
+                    // -- Kopiranje buffera u novi niz bajta
                     byte[] data = new byte[received];
                     Array.Copy(buf, data, received);
 
+                    // -- Komanda u koju kasnije deserijalizujemo pristigle komande
                     Komanda komanda = new Komanda();
                     
+                    // -- Koriscenje/deserijalizacija primljenih podataka
                     using (MemoryStream ms = new MemoryStream(data))
                     {
                         BinaryReader br = new BinaryReader(ms);
                         BinaryFormatter bf = new BinaryFormatter();
                         TipPodatka type = (TipPodatka)br.ReadByte();
 
-                        if (type == TipPodatka.Komanda)
+                        if (type == TipPodatka.Komanda) // Ako je komanda
                         {
                             komanda = (Komanda)bf.Deserialize(ms);
                             Dispatcher.Invoke(() => { LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Server salje odgovor na komandu: {komanda.rezultatKomande} | {komanda.dodatnaPoruka}"); });
                         }
-                        else if (type == TipPodatka.ListaUredjaja)
+                        else if (type == TipPodatka.ListaUredjaja) // Ako je lista uredjaja
                         {
-                            Dispatcher.Invoke(() =>
-                            {
-                                LogBox.AppendText($"\n[{DateTime.Now:HH:mm:ss}] - Server salje listu uredjaja za azuriranje...");
-                            });
+                            Dispatcher.Invoke(() => {LogBox.AppendText($"\n[{DateTime.Now:HH:mm:ss}] - Server salje listu uredjaja za azuriranje...");});
 
+                            // -- Uzimanje broja uredjaja i pravljenje nove liste uredjaja
                             int count = br.ReadInt32();
-
                             var novaLista = new List<IDevice>();
 
+                            // -- Petlja koja se izvrsava onoliko puta koliko server salje uredjaja
                             for (int i = 0; i < count; i++)
                             {
+                                // -- Ocitavanje tipa uredjaja i pravljenje objekta za deserijalizaciju
                                 TipPodatka tip = (TipPodatka)br.ReadByte();
                                 IDevice uredjaj;
 
+                                // -- Deserijalizacija podataka
                                 if (tip == TipPodatka.Kapija) uredjaj = (Kapija)bf.Deserialize(ms);
                                 else if (tip == TipPodatka.Klima) uredjaj = (Klima)bf.Deserialize(ms);
                                 else uredjaj = (Svetla)bf.Deserialize(ms);
 
+                                // -- Dodavanje uredjaja na listu
                                 novaLista.Add(uredjaj);
                             }
 
+                            // -- Azuriranje liste nakon prijema podataka
                             Dispatcher.Invoke(() =>
                             {
                                 int? selectedId = selectedDevice?.GetID();
 
                                 foreach (var novi in novaLista)
                                 {
-                                    var postojeci = ListaUredjaja
-                                        .FirstOrDefault(x => x.GetID() == novi.GetID());
+                                    var postojeci = ListaUredjaja.FirstOrDefault(x => x.GetID() == novi.GetID());
 
                                     if (postojeci == null)
                                     {
@@ -183,10 +196,12 @@ namespace UserClient
                                 }
                             });
                         }
-                        else if (type == TipPodatka.Timeout)
+                        else if (type == TipPodatka.Timeout) // Ako je podatak timeout
                         {
+                            // -- Prekid konekcije sa serverom
                             Disconnect();
 
+                            // -- Prikazivanje stranice za povezivanje
                             Dispatcher.Invoke(() =>
                             {
                                 ConnectionGrid.Visibility = Visibility.Visible;
@@ -200,20 +215,15 @@ namespace UserClient
                 }
                 catch (Exception ex)
                 {
-                    Dispatcher.Invoke(() =>
-                    {
-                        LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Desio se exception: {ex.Message}!");
-                    });
+                    Dispatcher.Invoke(() => { LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Desio se exception: {ex.Message}!"); });
                     Dispatcher.Invoke(() => Disconnect());
                     break;
                 }
             }
-            Dispatcher.Invoke(() =>
-            {
-                LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Zavrsio se recieve loop!");
-            });
+            Dispatcher.Invoke(() => { LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Zavrsio se recieve loop!");});
         }
 
+        // -- Azuriranje statusa uredjaja
         static void UpdateDeviceState(IDevice target, IDevice source)
         {
             if (target is Kapija t1 && source is Kapija s1)
@@ -237,10 +247,13 @@ namespace UserClient
             }
         }
 
+        // -- Osvezavanje prikaza izabranog uredjaja
         void OsveziPrikazSelektovanog()
         {
+            // -- Ako je izabrani null preskace se sve
             if (selectedDevice == null) return;
 
+            // -- Ako nije null azurira se WPF
             if (selectedDevice is Kapija k)
             {
                 KapijaControl.Visibility = Visibility.Visible;
@@ -274,12 +287,14 @@ namespace UserClient
             }
         }
 
+        // -- Poziva se kada se promeni izabrani uredjaj
         void DevicesListSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             selectedDevice = DevicesList.SelectedItem as IDevice;
             OsveziPrikazSelektovanog();
         }
 
+        // -- Prekid koneckije sa serverom
         private void Disconnect()
         {
             try
@@ -305,6 +320,7 @@ namespace UserClient
             }
         }
 
+        // -- Funkcija za zahtevanje liste uredjaja od servera
         void ZahtevajUredjaje()
         {
             byte[] buffer;
@@ -322,6 +338,7 @@ namespace UserClient
             LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesno poslat zahtev za dobijanje liste uredjaja! [{udpServerEP}]");
         }
 
+        // -- Funkcija koju poziva dugme za prijavu
         void Prijava(object sender, RoutedEventArgs e)
         {
             try
@@ -331,6 +348,7 @@ namespace UserClient
 
                 user = new Korisnik(nick, pw, true);
 
+                // -- Slanje poruke (korisnika) serveru 
                 byte[] buffer;
                 using (MemoryStream ms = new MemoryStream())
                 {
@@ -338,12 +356,13 @@ namespace UserClient
                     bf.Serialize(ms, user);
                     buffer = ms.ToArray();
                 }
-
                 tcpSocket.Send(buffer);
 
+                // -- Ocekivanje odgovora od servera
                 byte[] odgovor = new byte[16];
                 int received = tcpSocket.Receive(odgovor);
 
+                // -- Razumevanje podataka koje je server vratio i obrada
                 using (MemoryStream ms = new MemoryStream(odgovor, 0, received))
                 {
                     BinaryReader br = new BinaryReader(ms);
@@ -354,17 +373,19 @@ namespace UserClient
                         MessageBox.Show("Neuspesan pokusaj prijave!", "Greska", MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
-
                     udpPort = br.ReadInt32();
                 }
 
+                // -- Cuvanje dobijenog porta u korisniku
                 user.UDPPort = udpPort;
 
+                // -- Kreiranje UDP soketa
                 udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 udpSocket.Bind(new IPEndPoint(IPAddress.Any, udpPort));
 
                 LogBox.AppendText($"\n[{DateTime.Now.ToString("HH:mm:ss")}] - Uspesno kreiran soket sa portom {udpPort}!");
 
+                // -- Skripvanje autentikacije i prikaz dela za kontrolu uredjaja
                 Dispatcher.Invoke(() =>
                 {
                     AuthGrid.Visibility = Visibility.Collapsed;
@@ -381,6 +402,7 @@ namespace UserClient
             }
         }
 
+        // -- Registracija korisnika, slica/ista kao prijava
         void Registracija(object sender, RoutedEventArgs e)
         {
             try
@@ -441,12 +463,14 @@ namespace UserClient
             }
         }
 
+        // -- Funkcija koja zapocinje loop za dobijanje podataka od servera
         void ZapocniRecieve()
         {
             cts = new CancellationTokenSource();
             task = Task.Run(() => ReceiveLoop(cts.Token));
         }
 
+        // -- Generisanje komande
         Komanda GenerisiKomandu(TipKomande tip)
         {
             Komanda komanda = new Komanda();
@@ -458,6 +482,7 @@ namespace UserClient
             return komanda;
         }
 
+        // -- Slanje komande
         void PosaljiKomandu(Komanda komanda)
         {
             byte[] buffer;
@@ -476,6 +501,7 @@ namespace UserClient
             }
         }
 
+        // -- Odavde na dole su funckije koje pozivaju dugmici za kontrolisanje uredjaja
         void KapijaToggle(object sender, RoutedEventArgs e)
         {
             Komanda komanda = GenerisiKomandu(TipKomande.KapijaToggle);
@@ -530,6 +556,7 @@ namespace UserClient
             PosaljiKomandu(komanda);
         }
 
+        // -- Prikazivanje login-a ili register-a
         void ShowRegister(object sender, RoutedEventArgs e)
         {
             LoginPanel.Visibility = Visibility.Collapsed;

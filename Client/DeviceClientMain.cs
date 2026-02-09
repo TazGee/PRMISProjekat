@@ -13,13 +13,14 @@ namespace DeviceClient
     {
         static void Main(string[] args)
         {
-            IDevice uredjaj;
+            IDevice uredjaj; // Objekat uredjaja vezan za program
 
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine("Client started...");
 
-            EndPoint posiljaocEP = new IPEndPoint(IPAddress.Any, 0);
+            EndPoint posiljaocEP = new IPEndPoint(IPAddress.Any, 0); // EndPoint posiljaoca
 
+            // -- Unosenje tipa uredjaja
             int unos = 0;
             do
             {
@@ -30,6 +31,7 @@ namespace DeviceClient
             }
             while (unos < 1 || unos > 3) ;
 
+            // -- Unos naziva uredjaja
             string naziv;
             if (unos == 1) 
             {
@@ -54,6 +56,7 @@ namespace DeviceClient
             Console.Clear();
             Console.WriteLine("Uspesno ste izabrali tip uredjaja!");
 
+            // -- Unosenje ip-a i porta za 
             string ip, porttxt;
             int port;
             IPAddress ipAddress;
@@ -69,13 +72,15 @@ namespace DeviceClient
             Console.Clear();
             Console.WriteLine("Povezani ste na server!");
 
+            // -- Kreiranje udp soketa i endpointa za slanje poruka na server
             Socket udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint udpServerEP = new IPEndPoint(ipAddress, port);
 
+            // -- Neblokirajuci mod soketa
             udpSocket.Blocking = false;
 
+            // -- Slanje uredjaja serveru
             byte[] initBuffer;
-
             using (MemoryStream ms = new MemoryStream())
             {
                 BinaryWriter bw = new BinaryWriter(ms);
@@ -86,18 +91,23 @@ namespace DeviceClient
                 udpSocket.SendTo(initBuffer, udpServerEP);
             }
 
+            // -- Loop za primanje podataka
             while (true)
             {
-                if (udpSocket.Poll(500 * 1000, SelectMode.SelectRead))
+                if (udpSocket.Poll(500 * 1000, SelectMode.SelectRead)) // Polling model zbog blokirajuceg rezima
                 {
+                    // -- Kreiranje buffera i primanje podataka na njega
                     byte[] buffer = new byte[2048];
                     int received = udpSocket.ReceiveFrom(buffer, ref posiljaocEP);
 
+                    // -- Kopiranje buffera u novi niz bajta
                     byte[] data = new byte[received];
                     Array.Copy(buffer, data, received);
 
+                    // -- Kreiranje prazne komande za deserijalizaciju
                     Komanda komanda;
 
+                    // -- Deserijalizacija komandi primljenih od servera i ispis teksta
                     using (MemoryStream ms = new MemoryStream(data))
                     {
                         BinaryFormatter bf = new BinaryFormatter();
@@ -107,6 +117,7 @@ namespace DeviceClient
                     Komanda povratna = ObradiKomandu(komanda, uredjaj);
                     Console.WriteLine($"Obradio komandu: {povratna.rezultatKomande} | {povratna.dodatnaPoruka}");
 
+                    // -- Ako je komanda procitana i ispravnog je tipa i id-a korisnika
                     if (povratna.idKorisnika != -1 && povratna.tipKomande != TipKomande.Nepoznata)
                     {
                         using (MemoryStream ms = new MemoryStream())
@@ -114,14 +125,17 @@ namespace DeviceClient
                             BinaryWriter bw = new BinaryWriter(ms);
                             BinaryFormatter bf = new BinaryFormatter();
 
+                            // -- Upisivanje tipa podatka i komande u BinaryWriter
                             bw.Write((byte)TipPodatka.Komanda);
                             bf.Serialize(ms, povratna);
 
+                            // -- Upisivanje tipa uredjaja u BinaryWriter
                             if (uredjaj is Kapija) bw.Write((byte)TipPodatka.Kapija);
                             else if (uredjaj is Klima) bw.Write((byte)TipPodatka.Klima);
                             else bw.Write((byte)TipPodatka.Svetla);
                             bf.Serialize(ms, uredjaj);
 
+                            // -- Prebacivanje ms u niz i slanje serveru
                             buffer = ms.ToArray();
                             udpSocket.SendTo(buffer, 0, buffer.Length, SocketFlags.None, udpServerEP);
                         }
@@ -131,11 +145,12 @@ namespace DeviceClient
             }
         }
 
+        // -- Obradjivanje komande
         static Komanda ObradiKomandu(Komanda komanda, IDevice uredjaj)
         {
-            if(uredjaj is Kapija kapija)
+            if(uredjaj is Kapija kapija) // Ako je kapija
             {
-                if(komanda.tipKomande == TipKomande.KapijaToggle)
+                if(komanda.tipKomande == TipKomande.KapijaToggle) // Komanda za menjanje stanja
                 {
                     kapija.Otvorena = !kapija.Otvorena;
                     if(kapija.Otvorena) komanda.dodatnaPoruka = $"Kapija {kapija.Name} uspesno otvorena!";
@@ -144,9 +159,9 @@ namespace DeviceClient
                     return komanda;
                 }
             }
-            else if(uredjaj is Klima klima)
+            else if(uredjaj is Klima klima) // Ako je klima
             {
-                if (komanda.tipKomande == TipKomande.KlimaToggle)
+                if (komanda.tipKomande == TipKomande.KlimaToggle) // Komanda za menjanje stanja
                 {
                     klima.Upaljena = !klima.Upaljena;
                     if(klima.Upaljena) komanda.dodatnaPoruka = $"Klima {klima.Name} uspesno upaljena!";
@@ -154,7 +169,7 @@ namespace DeviceClient
                     komanda.rezultatKomande = RezultatKomande.Uspesna;
                     return komanda;
                 }
-                else if (komanda.tipKomande == TipKomande.KlimaRezim)
+                else if (komanda.tipKomande == TipKomande.KlimaRezim) // Promena rezima
                 {
                     if (klima.RezimRada == RezimiKlime.Ventilacija) klima.RezimRada = RezimiKlime.Grejanje;
                     else if (klima.RezimRada == RezimiKlime.Grejanje) klima.RezimRada = RezimiKlime.Hladjenje;
@@ -164,7 +179,7 @@ namespace DeviceClient
                     komanda.rezultatKomande = RezultatKomande.Uspesna;
                     return komanda;
                 }
-                else if (komanda.tipKomande == TipKomande.KlimaUvecajTemp)
+                else if (komanda.tipKomande == TipKomande.KlimaUvecajTemp) // Uvecavanje temperature
                 {
                     if(klima.Temperatura >= 30)
                     {
@@ -180,7 +195,7 @@ namespace DeviceClient
                         return komanda;
                     }
                 }
-                else
+                else // Smanjivanje temperature
                 {
                     if (klima.Temperatura <= 18)
                     {
@@ -197,9 +212,9 @@ namespace DeviceClient
                     }
                 }
             }
-            else if(uredjaj is Svetla svetla)
+            else if(uredjaj is Svetla svetla) // Ako je tip svetla
             {
-                if (komanda.tipKomande == TipKomande.SvetlaToggle)
+                if (komanda.tipKomande == TipKomande.SvetlaToggle)  // Komanda za menjanje stanja
                 {
                     svetla.Upaljena = !svetla.Upaljena;
                     if(svetla.Upaljena) komanda.dodatnaPoruka = $"Svetla {svetla.Name} uspesno upaljena!";
@@ -207,7 +222,7 @@ namespace DeviceClient
                     komanda.rezultatKomande = RezultatKomande.Uspesna;
                     return komanda;
                 }
-                else if (komanda.tipKomande == TipKomande.SvetlaBoja)
+                else if (komanda.tipKomande == TipKomande.SvetlaBoja) // Menjanje boje svetla
                 {
                     if (svetla.NijansaSvetla == NijanseSvetla.Bela) svetla.NijansaSvetla = NijanseSvetla.Crvena;
                     else if (svetla.NijansaSvetla == NijanseSvetla.Crvena) svetla.NijansaSvetla = NijanseSvetla.Zelena;
@@ -218,7 +233,7 @@ namespace DeviceClient
                     komanda.rezultatKomande = RezultatKomande.Uspesna;
                     return komanda;
                 }
-                else if (komanda.tipKomande == TipKomande.SvetlaPovecajOsvetljenje)
+                else if (komanda.tipKomande == TipKomande.SvetlaPovecajOsvetljenje) // Pojacavanje osvetljenosti
                 {
                     if (svetla.ProcenatOsvetljenja >= 100)
                     {
@@ -234,7 +249,7 @@ namespace DeviceClient
                         return komanda;
                     }
                 }
-                else
+                else // Smanjivanje osvetljenosti
                 {
                     if (svetla.ProcenatOsvetljenja <= 0)
                     {
